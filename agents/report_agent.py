@@ -126,7 +126,6 @@ def run():
             "gh", "issue", "create",
             "--title", f"月次レポート {month}",
             "--body", report,
-            "--label", "report",
         ], env={**os.environ, "GH_TOKEN": gh_token}, check=True)
         print("✅ GitHub Issueに投稿しました")
     else:
