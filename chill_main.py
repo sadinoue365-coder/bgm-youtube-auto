@@ -151,7 +151,7 @@ def main():
     title, description, tags = generate_metadata(scene_keyword)
 
     print("\n[6/6] Creating thumbnail & uploading...")
-    thumbnail_path = create_thumbnail(title[:50], output_path=f"{config.WORK_DIR}/thumbnail.jpg")
+    thumbnail_path = create_thumbnail(title[:50], output_path=f"{config.WORK_DIR}/thumbnail.jpg", background_path=image_path)
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
 
     print("\nCleaning up...")

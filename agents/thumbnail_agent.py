@@ -1,27 +1,34 @@
 import math
 import os
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 import config
 
 
-def create_thumbnail(title, output_path="work/thumbnail.jpg"):
+def create_thumbnail(title, output_path="work/thumbnail.jpg", background_path=None):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     w, h = 1280, 720
-    img = Image.new("RGB", (w, h), color=(8, 8, 16))
+
+    # 背景画像があればそれを使う、なければ黒背景
+    if background_path and os.path.exists(background_path):
+        img = Image.open(background_path).convert("RGB")
+        img = img.resize((w, h), Image.LANCZOS)
+        img = ImageEnhance.Brightness(img).enhance(0.5)
+    else:
+        img = Image.new("RGB", (w, h), color=(8, 8, 16))
+
     draw = ImageDraw.Draw(img)
 
-    # 波形風デザイン
-    for i in range(0, w, 3):
-        bar_h = int(h * 0.35 * abs(math.sin(i * 0.015) * math.cos(i * 0.007)))
-        ratio = i / w
-        r = int(0 * (1 - ratio) + 255 * ratio)
-        g = int(255 * (1 - ratio) + 0 * ratio)
-        b = int(170 * (1 - ratio) + 187 * ratio)
-        cy = h // 2
-        draw.line([(i, cy - bar_h), (i, cy + bar_h)], fill=(r, g, b), width=2)
+    # 下部に半透明グラデーション風の暗いオーバーレイ
+    overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+    for i in range(h // 2, h):
+        alpha = int(180 * (i - h // 2) / (h // 2))
+        overlay_draw.line([(0, i), (w, i)], fill=(0, 0, 0, alpha))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
 
     # フォント
     font_paths = [
@@ -43,13 +50,13 @@ def create_thumbnail(title, output_path="work/thumbnail.jpg"):
     # タイトル
     bbox = draw.textbbox((0, 0), title, font=font_large)
     tw = bbox[2] - bbox[0]
-    draw.text(((w - tw) // 2, int(h * 0.58)), title, font=font_large, fill=(255, 255, 255))
+    draw.text(((w - tw) // 2, int(h * 0.62)), title, font=font_large, fill=(255, 255, 255))
 
     # サブタイトル
     sub = f"{config.CHANNEL_NAME}  •  {config.TARGET_HOURS}H Non-Stop Mix"
     bbox2 = draw.textbbox((0, 0), sub, font=font_small)
     sw = bbox2[2] - bbox2[0]
-    draw.text(((w - sw) // 2, int(h * 0.76)), sub, font=font_small, fill=(160, 160, 160))
+    draw.text(((w - sw) // 2, int(h * 0.80)), sub, font=font_small, fill=(200, 200, 200))
 
     img.save(output_path, "JPEG", quality=90)
     print(f"  Thumbnail created: {output_path}")
