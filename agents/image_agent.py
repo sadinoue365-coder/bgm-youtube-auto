@@ -10,7 +10,10 @@ def fetch_pexels_image(api_key, queries, output_path="work/background.jpg"):
     encoded_query = urllib.parse.quote(query)
     url = f"https://api.pexels.com/v1/search?query={encoded_query}&per_page=20&orientation=landscape"
 
-    req = urllib.request.Request(url, headers={"Authorization": api_key})
+    req = urllib.request.Request(url, headers={
+        "Authorization": api_key,
+        "User-Agent": "Mozilla/5.0 (compatible; BGM-Bot/1.0)",
+    })
     with urllib.request.urlopen(req) as response:
         import json
         data = json.loads(response.read())
