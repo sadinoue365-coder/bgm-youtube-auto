@@ -23,10 +23,16 @@ def fetch_pexels_image(api_key, queries, output_path="work/background.jpg"):
         raise Exception(f"Pexelsで画像が見つかりませんでした: {query}")
 
     photo = random.choice(photos)
-    image_url = photo["src"]["landscape"]
+    image_url = photo["src"]["large2x"]
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    urllib.request.urlretrieve(image_url, output_path)
+    img_req = urllib.request.Request(image_url, headers={
+        "User-Agent": "Mozilla/5.0 (compatible; BGM-Bot/1.0)",
+        "Referer": "https://www.pexels.com/",
+    })
+    with urllib.request.urlopen(img_req) as response:
+        with open(output_path, "wb") as f:
+            f.write(response.read())
 
     print(f"  Image fetched: '{query}' → {output_path}")
     return output_path, query
