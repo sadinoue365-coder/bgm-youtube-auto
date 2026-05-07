@@ -2,7 +2,7 @@ name: Chill Channel Upload
 
 on:
   schedule:
-    - cron: '0 2 * * 2,4,6'  # 火・木・土 11:00 JST (= 02:00 UTC)
+    - cron: '0 2 * * *'  # 毎日 11:00 JST (= 02:00 UTC)
   workflow_dispatch:
 
 jobs:

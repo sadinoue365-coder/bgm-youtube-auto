@@ -2,7 +2,7 @@ name: Weekly BGM Upload
 
 on:
   schedule:
-    - cron: '0 0 * * 1,3,5'  # 月・水・金 09:00 JST (= 00:00 UTC)
+    - cron: '0 0 * * *'  # 毎日 09:00 JST (= 00:00 UTC)
   workflow_dispatch:      # GitHubから手動実行も可能
 
 jobs:
