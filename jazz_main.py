@@ -171,11 +171,10 @@ def main():
     audio_path = loop_audio(mp3_paths, target_hours=config.TARGET_HOURS,
                             output_path=f"{config.WORK_DIR}/looped.mp3")
 
-    print("\n[4/6] Generating wolf image with Gemini...")
+    print("\n[4/6] Fetching wolf image from Google Drive...")
     image_path, scene = generate_wolf_image(
-        config.GEMINI_API_KEY,
-        config.WOLF_BASE_PROMPT,
-        config.WOLF_SCENES,
+        creds,
+        config.IMAGE_FOLDER_ID,
         output_path=f"{config.WORK_DIR}/wolf_bg.jpg",
     )
 

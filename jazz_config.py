@@ -1,9 +1,9 @@
 import os
 
 GDRIVE_FOLDER_ID = os.environ.get("JAZZ_GDRIVE_FOLDER_ID", "")
+IMAGE_FOLDER_ID = os.environ.get("JAZZ_IMAGE_FOLDER_ID", "")
 REFRESH_TOKEN = os.environ.get("JAZZ_REFRESH_TOKEN", "")
 CLIENT_SECRET_JSON = os.environ.get("JAZZ_CLIENT_SECRET_JSON", "")
-GEMINI_API_KEY = os.environ.get("JAZZ_GEMINI_API_KEY", "")
 
 CHANNEL_NAME = "Red Wolf's Lounge"
 NUM_SONGS = 10
