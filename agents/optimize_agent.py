@@ -36,16 +36,30 @@ def get_credentials():
 
 
 def get_recent_videos(youtube, days=14):
-    since = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    response = youtube.search().list(
-        part="id,snippet",
-        forMine=True,
-        type="video",
-        publishedAfter=since,
-        maxResults=20,
-        order="date",
+    # チャンネルのアップロードプレイリストIDを取得
+    ch_response = youtube.channels().list(
+        part="contentDetails",
+        mine=True,
     ).execute()
-    return response.get("items", [])
+    uploads_playlist_id = ch_response["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+
+    # プレイリストから最新動画を取得
+    pl_response = youtube.playlistItems().list(
+        part="snippet",
+        playlistId=uploads_playlist_id,
+        maxResults=20,
+    ).execute()
+
+    since = datetime.utcnow() - timedelta(days=days)
+    recent = []
+    for item in pl_response.get("items", []):
+        published = item["snippet"]["publishedAt"]
+        pub_dt = datetime.strptime(published, "%Y-%m-%dT%H:%M:%SZ")
+        if pub_dt >= since:
+            # search APIと同じ形式に変換
+            item["id"] = {"videoId": item["snippet"]["resourceId"]["videoId"]}
+            recent.append(item)
+    return recent
 
 
 def get_video_stats(youtube, video_id):
