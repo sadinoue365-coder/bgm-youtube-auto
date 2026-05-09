@@ -9,14 +9,32 @@ from agents.jazz_video_agent import create_jazz_video
 from agents.loop_agent import loop_audio
 from agents.thumbnail_agent import create_thumbnail
 from agents.cleanup_agent import cleanup
+from agents.playlist_agent import add_to_playlist
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
-MOODS = ["Midnight", "Smoky", "Rainy Night", "Late Night", "Dark"]
-STYLES = ["Noir Jazz", "Hardboiled Jazz", "Slow Jazz", "Cool Jazz", "Dark Jazz"]
+MOODS = [
+    "Midnight", "Smoky", "Rainy Night", "Late Night", "Dark",
+    "3AM", "Moonlit", "Foggy", "Velvet", "Stormy",
+    "Whiskey", "Candlelit", "Neon", "Shadowy", "Lonely",
+    "Brooding", "Melancholic", "Silky", "Dim", "Haunting",
+]
+
+STYLES = [
+    "Noir Jazz", "Hardboiled Jazz", "Slow Jazz", "Cool Jazz", "Dark Jazz",
+    "Jazz Lounge", "Bebop", "Smooth Jazz", "Blues Jazz", "Swing Jazz",
+    "Late Night Jazz", "Jazz Bar", "Midnight Jazz", "Jazz Ballad", "Neo Soul Jazz",
+]
+
+SETTINGS = [
+    "for Late Night Work", "for Deep Focus", "for Reading & Whiskey",
+    "for Rainy Evenings", "for Creative Writing", "for Insomniacs",
+    "for the Lonely Hours", "for Slow Mornings", "for the Last Train Home",
+    "for Dimly Lit Rooms", "for Thinking Too Much", "for Night Owls",
+]
 
 
 def get_credentials():
@@ -104,9 +122,10 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
 def generate_metadata(scene):
     mood = random.choice(MOODS)
     style = random.choice(STYLES)
+    setting = random.choice(SETTINGS)
     now = datetime.datetime.now()
 
-    title = f"{mood} {style} | {config.TARGET_HOURS}H BGM | {config.CHANNEL_NAME}"
+    title = f"{mood} {style} {setting} | {config.TARGET_HOURS}H BGM"
 
     description = f"""🐺 {config.TARGET_HOURS}-Hour {mood} {style} for Late Nights & Deep Focus
 
@@ -173,6 +192,10 @@ def main():
         background_path=image_path,
     )
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
+
+    print("\nAdding to playlist...")
+    youtube = build("youtube", "v3", credentials=creds)
+    add_to_playlist(youtube, video_id, config.PLAYLIST_ID)
 
     print("\nCleaning up...")
     cleanup(config.WORK_DIR)

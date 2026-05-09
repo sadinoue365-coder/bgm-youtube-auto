@@ -14,6 +14,7 @@ VIDEO_HEIGHT = 1080
 VIDEO_FPS = 30
 
 WORK_DIR = "work"
+PLAYLIST_ID = "PLyUduwWDOrpyAAaC-X8cBNdGDa670aDLx"
 
 WOLF_SCENES = [
     "sitting at a dark mahogany bar counter with a whiskey glass",

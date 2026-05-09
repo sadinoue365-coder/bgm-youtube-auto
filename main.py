@@ -8,6 +8,8 @@ from agents.video_agent import create_waveform_video
 from agents.thumbnail_agent import create_thumbnail
 from agents.upload_agent import upload_video
 from agents.cleanup_agent import cleanup
+from agents.playlist_agent import add_to_playlist
+from googleapiclient.discovery import build
 
 GENRES = ["Deep House", "Tech House", "Melodic Techno", "Ambient House", "Progressive House"]
 MOODS = ["Dark", "Uplifting", "Groovy", "Chill", "Intense"]
@@ -66,6 +68,12 @@ def main():
 
     print("\n[5/5] Uploading to YouTube...")
     video_id = upload_video(video_path, thumbnail_path, title, description, tags)
+
+    print("\nAdding to playlist...")
+    from agents.drive_agent import get_credentials
+    creds = get_credentials()
+    youtube = build("youtube", "v3", credentials=creds)
+    add_to_playlist(youtube, video_id, config.PLAYLIST_ID)
 
     print("\nCleaning up...")
     cleanup(config.WORK_DIR)

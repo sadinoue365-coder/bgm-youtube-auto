@@ -8,6 +8,7 @@ from agents.static_video_agent import create_static_video
 from agents.loop_agent import loop_audio
 from agents.thumbnail_agent import create_thumbnail
 from agents.cleanup_agent import cleanup
+from agents.playlist_agent import add_to_playlist
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -153,6 +154,10 @@ def main():
     print("\n[6/6] Creating thumbnail & uploading...")
     thumbnail_path = create_thumbnail(title[:50], output_path=f"{config.WORK_DIR}/thumbnail.jpg", background_path=image_path)
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
+
+    print("\nAdding to playlist...")
+    youtube = build("youtube", "v3", credentials=creds)
+    add_to_playlist(youtube, video_id, config.PLAYLIST_ID)
 
     print("\nCleaning up...")
     cleanup(config.WORK_DIR)

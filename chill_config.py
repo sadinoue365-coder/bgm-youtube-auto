@@ -14,6 +14,7 @@ VIDEO_HEIGHT = 1080
 VIDEO_FPS = 30
 
 WORK_DIR = "work"
+PLAYLIST_ID = "PL2olIkIxT8lHnW6zj0IZ_yHP57H-MI-0c"
 
 PEXELS_QUERIES = [
     "beach sunset",
