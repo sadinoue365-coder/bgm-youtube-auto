@@ -9,9 +9,8 @@ def create_static_video(image_path, audio_path, output_path="work/output.mp4"):
         "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,"
         "pad=1920:1080:(ow-iw)/2:(oh-ih)/2,format=yuv420p,"
         "colorlevels=rimin=0:gimin=0:bimin=0:rimax=0.6:gimax=0.6:bimax=0.6[bg];"
-        "[1:a]showwaves=s=1920x300:mode=cline:rate=30"
-        ":colors=0x00FFAA|0xFF00BB[waves];"
-        "[bg][waves]overlay=(W-w)/2:(H-h)/2+200[v]"
+        "[1:a]showwaves=s=380x55:mode=cline:rate=30:colors=0xFFFFFF[waves];"
+        "[bg][waves]overlay=W-w-30:H-h-30[v]"
     )
 
     subprocess.run([
