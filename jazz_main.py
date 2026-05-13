@@ -125,7 +125,7 @@ def generate_metadata(scene):
     setting = random.choice(SETTINGS)
     now = datetime.datetime.now()
 
-    title = f"{mood} {style} {setting} | {config.TARGET_HOURS}H BGM"
+    title = f"Jazz BGM | {mood} {style} {setting} | {config.TARGET_HOURS}H"
 
     description = f"""🐺 {config.TARGET_HOURS}-Hour {mood} {style} for Late Nights & Deep Focus
 
