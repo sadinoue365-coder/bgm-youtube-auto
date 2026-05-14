@@ -4,6 +4,7 @@ import json
 import random
 
 import cafe_config as config
+from agents.duration_agent import get_random_duration, format_duration
 from agents.image_agent import fetch_pexels_image
 from agents.static_video_agent import create_static_video
 from agents.loop_agent import loop_audio
@@ -118,15 +119,16 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
     return video_id
 
 
-def generate_metadata(scene_keyword):
+def generate_metadata(scene_keyword, target_hours):
     mood = random.choice(MOODS)
     style = random.choice(STYLES)
     setting = random.choice(SETTINGS)
     now = datetime.datetime.now()
+    dur = format_duration(target_hours)
 
-    title = f"Coffee Shop Music | {mood} {style} {setting} | {config.TARGET_HOURS}H BGM"
+    title = f"Coffee Shop Music | {mood} {style} {setting} | {dur} BGM"
 
-    description = f"""☕ {config.TARGET_HOURS}-Hour {mood} {style} {setting}
+    description = f"""☕ {dur} {mood} {style} {setting}
 
 Step into your perfect coffee shop atmosphere.
 
@@ -152,7 +154,7 @@ Perfect for:
         "coffee shop music", "cafe music", "bossa nova", "jazz piano",
         "lo-fi jazz", "study music", "work music", "relaxing music",
         "background music", "BGM", "cafe BGM", "instrumental music",
-        "coffee music", "acoustic guitar", f"{config.TARGET_HOURS} hour mix",
+        "coffee music", "acoustic guitar", f"{dur.lower()} mix",
         "no copyright music", "AI music", scene_keyword,
     ]
 
@@ -165,11 +167,14 @@ def main():
     print("[1/6] Authenticating...")
     creds = get_credentials()
 
+    target_hours = get_random_duration()
+    print(f"  Today's duration: {format_duration(target_hours)}")
+
     print("\n[2/6] Downloading MP3s from Google Drive...")
     mp3_paths = download_random_mp3s(creds, num=config.NUM_SONGS, dest_dir=config.WORK_DIR)
 
     print("\n[3/6] Creating looped audio...")
-    audio_path = loop_audio(mp3_paths, target_hours=config.TARGET_HOURS,
+    audio_path = loop_audio(mp3_paths, target_hours=target_hours,
                             output_path=f"{config.WORK_DIR}/looped.mp3")
 
     print("\n[4/6] Fetching background image from Pexels...")
@@ -182,7 +187,7 @@ def main():
     video_path = create_static_video(image_path, audio_path,
                                      output_path=f"{config.WORK_DIR}/output.mp4")
 
-    title, description, tags = generate_metadata(scene_keyword)
+    title, description, tags = generate_metadata(scene_keyword, target_hours)
 
     print("\n[6/6] Creating thumbnail & uploading...")
     thumbnail_path = create_thumbnail(
@@ -190,7 +195,7 @@ def main():
         output_path=f"{config.WORK_DIR}/thumbnail.jpg",
         background_path=image_path,
         channel_name=config.CHANNEL_NAME,
-        target_hours=config.TARGET_HOURS,
+        target_hours=target_hours,
         accent_color=(210, 160, 90),  # Cafe: ウォームブラウン
         style="minimal",
     )

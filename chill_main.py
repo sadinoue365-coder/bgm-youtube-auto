@@ -3,6 +3,7 @@ import json
 import random
 
 import chill_config as config
+from agents.duration_agent import get_random_duration, format_duration
 from agents.image_agent import fetch_pexels_image
 from agents.static_video_agent import create_static_video
 from agents.loop_agent import loop_audio
@@ -99,11 +100,12 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
     return video_id
 
 
-def generate_metadata(scene_keyword):
+def generate_metadata(scene_keyword, target_hours):
     mood = random.choice(MOODS)
     now = datetime.datetime.now()
-    title = f"{mood} Chill Music | {scene_keyword.title()} | {config.TARGET_HOURS}H Relaxing BGM"
-    description = f"""🌊 {config.TARGET_HOURS}-Hour {mood} Chill Music for Relaxation & Focus
+    dur = format_duration(target_hours)
+    title = f"{mood} Chill Music | {scene_keyword.title()} | {dur} Relaxing BGM"
+    description = f"""🌊 {dur} {mood} Chill Music for Relaxation & Focus
 
 Perfect for:
 ✅ Work from home
@@ -120,7 +122,7 @@ Perfect for:
     tags = [
         "chill music", "relaxing music", "BGM", "study music", "work music",
         "meditation music", "ambient music", "sleep music", "stress relief",
-        "lofi", "chillout", scene_keyword, f"{config.TARGET_HOURS} hour mix",
+        "lofi", "chillout", scene_keyword, f"{dur.lower()} mix",
         "no copyright music", "AI music",
     ]
     return title, description, tags
@@ -132,11 +134,14 @@ def main():
     print("[1/5] Authenticating...")
     creds = get_credentials()
 
+    target_hours = get_random_duration()
+    print(f"  Today's duration: {format_duration(target_hours)}")
+
     print("\n[2/5] Downloading MP3s from Google Drive...")
     mp3_paths = download_random_mp3s(creds, num=config.NUM_SONGS, dest_dir=config.WORK_DIR)
 
     print("\n[3/5] Creating looped audio...")
-    audio_path = loop_audio(mp3_paths, target_hours=config.TARGET_HOURS,
+    audio_path = loop_audio(mp3_paths, target_hours=target_hours,
                             output_path=f"{config.WORK_DIR}/looped.mp3")
 
     print("\n[4/5] Fetching background image from Pexels...")
@@ -149,7 +154,7 @@ def main():
     video_path = create_static_video(image_path, audio_path,
                                      output_path=f"{config.WORK_DIR}/output.mp4")
 
-    title, description, tags = generate_metadata(scene_keyword)
+    title, description, tags = generate_metadata(scene_keyword, target_hours)
 
     print("\n[6/6] Creating thumbnail & uploading...")
     thumbnail_path = create_thumbnail(
@@ -157,7 +162,7 @@ def main():
         output_path=f"{config.WORK_DIR}/thumbnail.jpg",
         background_path=image_path,
         channel_name=config.CHANNEL_NAME,
-        target_hours=config.TARGET_HOURS,
+        target_hours=target_hours,
         accent_color=(0, 220, 180),  # Chill: ティール
     )
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)

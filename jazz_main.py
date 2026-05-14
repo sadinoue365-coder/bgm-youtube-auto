@@ -4,6 +4,7 @@ import json
 import random
 
 import jazz_config as config
+from agents.duration_agent import get_random_duration, format_duration
 from agents.wolf_image_agent import generate_wolf_image
 from agents.jazz_video_agent import create_jazz_video
 from agents.loop_agent import loop_audio
@@ -119,15 +120,16 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
     return video_id
 
 
-def generate_metadata(scene):
+def generate_metadata(scene, target_hours):
     mood = random.choice(MOODS)
     style = random.choice(STYLES)
     setting = random.choice(SETTINGS)
     now = datetime.datetime.now()
+    dur = format_duration(target_hours)
 
-    title = f"Jazz BGM | {mood} {style} {setting} | {config.TARGET_HOURS}H"
+    title = f"Jazz BGM | {mood} {style} {setting} | {dur}"
 
-    description = f"""🐺 {config.TARGET_HOURS}-Hour {mood} {style} for Late Nights & Deep Focus
+    description = f"""🐺 {dur} {mood} {style} for Late Nights & Deep Focus
 
 Step into the smoky world of noir jazz.
 
@@ -151,7 +153,7 @@ Perfect for:
     tags = [
         "jazz", "noir jazz", style, "BGM", "late night music",
         "work music", "focus music", "relaxing jazz", "smooth jazz",
-        "AI music", "no copyright music", f"{config.TARGET_HOURS} hour mix",
+        "AI music", "no copyright music", f"{format_duration(target_hours).lower()} mix",
         "night music", "dark jazz", "cool jazz",
     ]
 
@@ -167,8 +169,11 @@ def main():
     print("\n[2/6] Downloading MP3s from Google Drive...")
     mp3_paths = download_random_mp3s(creds, num=config.NUM_SONGS, dest_dir=config.WORK_DIR)
 
+    target_hours = get_random_duration()
+    print(f"  Today's duration: {format_duration(target_hours)}")
+
     print("\n[3/6] Creating looped audio...")
-    audio_path = loop_audio(mp3_paths, target_hours=config.TARGET_HOURS,
+    audio_path = loop_audio(mp3_paths, target_hours=target_hours,
                             output_path=f"{config.WORK_DIR}/looped.mp3")
 
     print("\n[4/6] Fetching wolf image from Google Drive...")
@@ -182,7 +187,7 @@ def main():
     video_path = create_jazz_video(image_path, audio_path,
                                    output_path=f"{config.WORK_DIR}/output.mp4")
 
-    title, description, tags = generate_metadata(scene)
+    title, description, tags = generate_metadata(scene, target_hours)
 
     print("\n[6/6] Creating thumbnail & uploading...")
     thumbnail_path = create_thumbnail(
@@ -190,7 +195,7 @@ def main():
         output_path=f"{config.WORK_DIR}/thumbnail.jpg",
         background_path=image_path,
         channel_name=config.CHANNEL_NAME,
-        target_hours=config.TARGET_HOURS,
+        target_hours=target_hours,
         accent_color=(220, 180, 60),  # Jazz: ゴールド
     )
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
