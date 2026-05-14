@@ -1,20 +1,41 @@
 import os
 
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 
-def _draw_text_with_outline(draw, pos, text, font, fill, outline_color, outline_width=3):
-    """テキストを縁取りつきで描画する"""
-    x, y = pos
-    for dx in range(-outline_width, outline_width + 1):
-        for dy in range(-outline_width, outline_width + 1):
-            if dx != 0 or dy != 0:
-                draw.text((x + dx, y + dy), text, font=font, fill=outline_color)
+def _load_font(size):
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+    ]
+    for fp in font_paths:
+        if os.path.exists(fp):
+            return ImageFont.truetype(fp, size)
+    return ImageFont.load_default()
+
+
+def _draw_text_centered(draw, y, text, font, fill, shadow=True):
+    """テキストを水平中央揃えで描画（シャドウつき）"""
+    w = 1280
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+    x = (w - tw) // 2
+    if shadow:
+        # ソフトシャドウ（黒を薄く複数回）
+        for ox, oy in [(2, 2), (3, 3), (4, 4)]:
+            draw.text((x + ox, y + oy), text, font=font, fill=(0, 0, 0, 120))
     draw.text((x, y), text, font=font, fill=fill)
 
 
 def create_thumbnail(title, output_path="work/thumbnail.jpg", background_path=None,
-                     channel_name="BGM Channel", target_hours=3, accent_color=(255, 255, 255)):
+                     channel_name="BGM Channel", target_hours=3, accent_color=(255, 255, 255),
+                     style="standard"):
+    """
+    style="standard" : バッジ・サブタイトルあり（Chill/Jazz用）
+    style="minimal"  : テキスト最小限・画像主役（Cafe用）
+    """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     w, h = 1280, 720
@@ -23,51 +44,97 @@ def create_thumbnail(title, output_path="work/thumbnail.jpg", background_path=No
     if background_path and os.path.exists(background_path):
         img = Image.open(background_path).convert("RGB")
         img = img.resize((w, h), Image.LANCZOS)
-        # 明度を上げる（暗くしすぎない）
-        img = ImageEnhance.Brightness(img).enhance(0.7)
-        # 彩度を少し上げてビビッドに
-        img = ImageEnhance.Color(img).enhance(1.3)
+        if style == "minimal":
+            img = ImageEnhance.Brightness(img).enhance(0.75)
+            img = ImageEnhance.Color(img).enhance(1.2)
+        else:
+            img = ImageEnhance.Brightness(img).enhance(0.7)
+            img = ImageEnhance.Color(img).enhance(1.3)
     else:
         img = Image.new("RGB", (w, h), color=(8, 8, 24))
 
-    # 左右にグラデーションのビネット（中央を明るく保つ）
+    # ビネット
     vignette = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     vd = ImageDraw.Draw(vignette)
+    strength = 100 if style == "minimal" else 160
     for i in range(60):
-        alpha = int(160 * (i / 60) ** 2)
+        alpha = int(strength * (i / 60) ** 2)
         vd.rectangle([i, i, w - i, h - i], outline=(0, 0, 0, alpha))
     img = Image.alpha_composite(img.convert("RGBA"), vignette).convert("RGB")
 
-    # 下部グラデーションオーバーレイ（テキスト読みやすくする）
+    # 下部グラデーション
     overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     od = ImageDraw.Draw(overlay)
-    for i in range(h // 3 * 2, h):
-        alpha = int(200 * (i - h // 3 * 2) / (h // 3))
+    grad_start = h // 2 if style == "minimal" else h // 3 * 2
+    max_alpha = 160 if style == "minimal" else 200
+    for i in range(grad_start, h):
+        alpha = int(max_alpha * (i - grad_start) / (h - grad_start))
         od.line([(0, i), (w, i)], fill=(0, 0, 0, alpha))
     img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
-    draw = ImageDraw.Draw(img)
+    draw = ImageDraw.Draw(img, "RGBA")
 
-    # フォント（サイズを大きく）
-    font_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-    ]
-    font_title = None
-    font_sub = None
-    font_badge = None
-    for fp in font_paths:
-        if os.path.exists(fp):
-            font_title = ImageFont.truetype(fp, 80)
-            font_sub = ImageFont.truetype(fp, 34)
-            font_badge = ImageFont.truetype(fp, 30)
-            break
-    if font_title is None:
-        font_title = ImageFont.load_default()
-        font_sub = font_title
-        font_badge = font_title
+    if style == "minimal":
+        _render_minimal(draw, title, target_hours, accent_color)
+    else:
+        _render_standard(draw, title, target_hours, accent_color, channel_name)
+
+    img.save(output_path, "JPEG", quality=92)
+    print(f"  Thumbnail created: {output_path}")
+    return output_path
+
+
+def _render_minimal(draw, title, target_hours, accent_color):
+    """
+    ミニマルデザイン：
+    - メインワード（大）を下部中央
+    - 時間表記（小）をその下
+    """
+    # タイトルから核心ワードを抽出（"|"で区切られた2番目のパート）
+    parts = title.split("|")
+    if len(parts) >= 2:
+        main_text = parts[1].strip()
+    else:
+        main_text = parts[0].strip()
+
+    # 長すぎる場合は短縮
+    words = main_text.split()
+    if len(words) > 4:
+        main_text = " ".join(words[:4])
+
+    font_main = _load_font(88)
+    font_hours = _load_font(36)
+
+    # メインテキストが幅に収まるか確認、収まらなければ2行に
+    bbox = draw.textbbox((0, 0), main_text, font=font_main)
+    if bbox[2] - bbox[0] > 1180:
+        words = main_text.split()
+        mid = len(words) // 2
+        lines = [" ".join(words[:mid]), " ".join(words[mid:])]
+    else:
+        lines = [main_text]
+
+    line_h = 100
+    total_h = len(lines) * line_h
+    start_y = int(720 * 0.58) - total_h // 2
+
+    for i, line in enumerate(lines):
+        _draw_text_centered(draw, start_y + i * line_h, line, font_main,
+                            fill=(255, 255, 255), shadow=True)
+
+    # 時間表記（細く・小さく）
+    hour_text = f"{target_hours} Hours"
+    _draw_text_centered(draw, int(720 * 0.82), hour_text, font_hours,
+                        fill=(*accent_color, 210), shadow=False)
+
+
+def _render_standard(draw, title, target_hours, accent_color, channel_name):
+    """
+    スタンダードデザイン：バッジ・タイトル・サブタイトルあり（Chill/Jazz用）
+    """
+    font_title = _load_font(80)
+    font_sub = _load_font(34)
+    font_badge = _load_font(30)
 
     # 時間バッジ（左上）
     badge_text = f"{target_hours}H BGM"
@@ -77,42 +144,45 @@ def create_thumbnail(title, output_path="work/thumbnail.jpg", background_path=No
     draw.rounded_rectangle([30, 30, 30 + bw, 30 + bh], radius=8, fill=accent_color)
     draw.text((30 + 16, 30 + 8), badge_text, font=font_badge, fill=(0, 0, 0))
 
-    # メインタイトル（中央下寄り、2行対応）
+    # タイトル（2行まで）
     words = title.split()
     lines = []
     current = ""
     for word in words:
         test = (current + " " + word).strip()
         bbox = draw.textbbox((0, 0), test, font=font_title)
-        if bbox[2] - bbox[0] > w - 80 and current:
+        if bbox[2] - bbox[0] > 1200 and current:
             lines.append(current)
             current = word
         else:
             current = test
     if current:
         lines.append(current)
-
-    # 最大2行
     lines = lines[:2]
+
     line_height = 90
     total_text_h = len(lines) * line_height
-    start_y = int(h * 0.52) - total_text_h // 2
+    start_y = int(720 * 0.52) - total_text_h // 2
 
     for i, line in enumerate(lines):
         bbox = draw.textbbox((0, 0), line, font=font_title)
         tw = bbox[2] - bbox[0]
-        x = (w - tw) // 2
+        x = (1280 - tw) // 2
         y = start_y + i * line_height
-        _draw_text_with_outline(draw, (x, y), line, font_title,
-                                fill=(255, 255, 255), outline_color=(0, 0, 0), outline_width=4)
+        # 縁取り
+        for dx in range(-4, 5):
+            for dy in range(-4, 5):
+                if dx != 0 or dy != 0:
+                    draw.text((x + dx, y + dy), line, font=font_title, fill=(0, 0, 0))
+        draw.text((x, y), line, font=font_title, fill=(255, 255, 255))
 
     # サブタイトル
     sub = f"{channel_name}  •  Relaxing Music"
     bbox2 = draw.textbbox((0, 0), sub, font=font_sub)
     sw = bbox2[2] - bbox2[0]
-    _draw_text_with_outline(draw, ((w - sw) // 2, int(h * 0.83)), sub, font_sub,
-                            fill=accent_color, outline_color=(0, 0, 0), outline_width=3)
-
-    img.save(output_path, "JPEG", quality=92)
-    print(f"  Thumbnail created: {output_path}")
-    return output_path
+    sx = (1280 - sw) // 2
+    for dx in range(-3, 4):
+        for dy in range(-3, 4):
+            if dx != 0 or dy != 0:
+                draw.text((sx + dx, int(720 * 0.83) + dy), sub, font=font_sub, fill=(0, 0, 0))
+    draw.text((sx, int(720 * 0.83)), sub, font=font_sub, fill=accent_color)

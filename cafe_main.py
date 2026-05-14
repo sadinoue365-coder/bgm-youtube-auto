@@ -186,12 +186,13 @@ def main():
 
     print("\n[6/6] Creating thumbnail & uploading...")
     thumbnail_path = create_thumbnail(
-        title[:50],
+        title,
         output_path=f"{config.WORK_DIR}/thumbnail.jpg",
         background_path=image_path,
         channel_name=config.CHANNEL_NAME,
         target_hours=config.TARGET_HOURS,
         accent_color=(210, 160, 90),  # Cafe: ウォームブラウン
+        style="minimal",
     )
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
 
