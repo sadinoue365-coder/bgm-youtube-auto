@@ -57,7 +57,8 @@ def _get_random_image_id(creds, folder_id):
 
 def _pollinations_img2img(file_id, scene, output_path, retries=3):
     """
-    Pollinations.ai の image= パラメータを使って img2img 生成。
+    Pollinations.ai の kontext モデルで img2img 生成。
+    kontextはBlack Forest Labs製の画像編集専用モデル。
     Drive の公開URLを参照画像として渡す。
     フォルダは「リンクを知っている全員が閲覧可」に設定が必要。
     """
@@ -65,14 +66,19 @@ def _pollinations_img2img(file_id, scene, output_path, retries=3):
     base_image_url = f"https://drive.google.com/uc?export=download&id={file_id}"
     encoded_image_url = urllib.parse.quote(base_image_url, safe="")
 
-    full_prompt = BASE_PROMPT + scene
+    # kontextはキャラクターを保持しながらシーンを変えるのに特化
+    full_prompt = (
+        f"Keep the wolf character exactly the same. Change only the scene: {scene}. "
+        "Maintain the anime illustration style, noir atmosphere, "
+        "crimson red and black color palette, and fedora hat."
+    )
     encoded_prompt = urllib.parse.quote(full_prompt)
     seed = random.randint(1, 99999)
 
     url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1920&height=1080&seed={seed}&model=flux&nologo=true"
-        f"&image={encoded_image_url}&strength=0.65"
+        f"?width=1920&height=1080&seed={seed}&model=kontext&nologo=true"
+        f"&image={encoded_image_url}"
     )
 
     for attempt in range(retries):
