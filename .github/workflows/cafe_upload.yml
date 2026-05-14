@@ -1,0 +1,35 @@
+name: Coffee Shop Upload
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 毎日 09:00 JST (= 00:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install FFmpeg
+        run: sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Coffee Shop automation
+        env:
+          CAFE_CLIENT_SECRET_JSON: ${{ secrets.CAFE_CLIENT_SECRET_JSON }}
+          CAFE_REFRESH_TOKEN: ${{ secrets.CAFE_REFRESH_TOKEN }}
+          CAFE_GDRIVE_FOLDER_ID: ${{ secrets.CAFE_GDRIVE_FOLDER_ID }}
+          CAFE_PLAYLIST_ID: ${{ secrets.CAFE_PLAYLIST_ID }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: python cafe_main.py
