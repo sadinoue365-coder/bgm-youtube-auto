@@ -189,6 +189,9 @@ def main():
         title[:50],
         output_path=f"{config.WORK_DIR}/thumbnail.jpg",
         background_path=image_path,
+        channel_name=config.CHANNEL_NAME,
+        target_hours=config.TARGET_HOURS,
+        accent_color=(220, 180, 60),  # Jazz: ゴールド
     )
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
 

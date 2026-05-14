@@ -152,7 +152,14 @@ def main():
     title, description, tags = generate_metadata(scene_keyword)
 
     print("\n[6/6] Creating thumbnail & uploading...")
-    thumbnail_path = create_thumbnail(title[:50], output_path=f"{config.WORK_DIR}/thumbnail.jpg", background_path=image_path)
+    thumbnail_path = create_thumbnail(
+        title[:50],
+        output_path=f"{config.WORK_DIR}/thumbnail.jpg",
+        background_path=image_path,
+        channel_name=config.CHANNEL_NAME,
+        target_hours=config.TARGET_HOURS,
+        accent_color=(0, 220, 180),  # Chill: ティール
+    )
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
 
     print("\nAdding to playlist...")
