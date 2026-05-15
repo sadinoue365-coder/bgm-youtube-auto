@@ -63,58 +63,47 @@ def get_all_videos(youtube):
     return videos
 
 
-def download_video_frame(video_id, path):
-    """
-    yt-dlp で動画の最初の30秒を最低画質でダウンロードし、ffmpegでフレームを抽出。
-    実際の背景画像をテキストなしで取得できる唯一の確実な方法。
-    失敗した場合は None を返す。
-    """
-    import subprocess
-    import glob
-
-    tmp_video = f"work/tmp_{video_id}"
-    url = f"https://www.youtube.com/watch?v={video_id}"
-
+def fetch_pexels_background(scene_keyword, output_path, pexels_api_key):
+    """Pexelsからシーンキーワードで背景画像を取得（Chill用）"""
+    from agents.image_agent import fetch_pexels_image
     try:
-        # 最低画質で最初の35秒のみダウンロード
-        subprocess.run([
-            "yt-dlp",
-            "--format", "worstvideo[ext=mp4]/worst[ext=mp4]/worst",
-            "--download-sections", "*0:00-0:35",
-            "--output", tmp_video + ".%(ext)s",
-            "--no-playlist",
-            "--quiet",
-            url,
-        ], check=True, timeout=120)
+        image_path, _ = fetch_pexels_image(
+            pexels_api_key, [scene_keyword],
+            output_path=output_path,
+        )
+        print(f"    Pexels画像取得: '{scene_keyword}'")
+        return image_path
+    except Exception as e:
+        print(f"    Pexels取得失敗: {e}")
+        return None
 
-        # ダウンロードしたファイルを探す
-        files = glob.glob(tmp_video + ".*")
+
+def fetch_drive_wolf_image(creds, image_folder_id, output_path):
+    """Google DriveからJazz用の狼画像をランダムに取得"""
+    import io as _io
+    from googleapiclient.http import MediaIoBaseDownload
+    try:
+        drive = build("drive", "v3", credentials=creds)
+        results = drive.files().list(
+            q=f"'{image_folder_id}' in parents and mimeType contains 'image/' and trashed=false",
+            fields="files(id, name)",
+            pageSize=200,
+        ).execute()
+        files = results.get("files", [])
         if not files:
             return None
-        video_file = files[0]
-
-        # 30秒時点のフレームを抽出（背景が安定している）
-        subprocess.run([
-            "ffmpeg", "-y",
-            "-ss", "30",
-            "-i", video_file,
-            "-frames:v", "1",
-            "-q:v", "2",
-            path,
-        ], check=True, timeout=30, capture_output=True)
-
-        # 一時ファイルを削除
-        os.remove(video_file)
-
-        print(f"    フレーム抽出: 動画30秒地点")
-        return path
-
+        import random
+        chosen = random.choice(files)
+        request = drive.files().get_media(fileId=chosen["id"])
+        with _io.FileIO(output_path, "wb") as fh:
+            downloader = MediaIoBaseDownload(fh, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+        print(f"    Drive画像取得: {chosen['name']}")
+        return output_path
     except Exception as e:
-        print(f"    フレーム取得失敗: {e}")
-        # 一時ファイルをクリーンアップ
-        for f in glob.glob(tmp_video + ".*"):
-            try: os.remove(f)
-            except: pass
+        print(f"    Drive画像取得失敗: {e}")
         return None
 
 
@@ -166,7 +155,7 @@ def upload_thumbnail(youtube, video_id, thumbnail_path):
     ).execute()
 
 
-def process_channel(channel, client_secret_path):
+def process_channel(channel, client_secret_path, pexels_api_key=None):
     os.makedirs("work", exist_ok=True)
 
     if channel == "chill":
@@ -180,7 +169,7 @@ def process_channel(channel, client_secret_path):
         style = "minimal"
         print("=== Jazz チャンネルのサムネイルを更新 ===\n")
     else:
-        print("使い方: python3 rethumbnail.py [chill|jazz] <client_secret.jsonのパス>")
+        print("使い方: python3 rethumbnail.py [chill|jazz] <client_secret.jsonのパス> [pexels_api_key]")
         sys.exit(1)
 
     creds = get_credentials(client_secret_path)
@@ -195,11 +184,21 @@ def process_channel(channel, client_secret_path):
         print(f"[{i+1}/{len(videos)}] {video['title'][:60]}")
 
         try:
-            # 動画フレームを試みる（取得できなければグラデーション背景を使用）
-            frame_path = "work/video_frame.jpg"
-            bg = download_video_frame(video["id"], frame_path)
+            bg_path = "work/bg_image.jpg"
+
+            if channel == "chill" and pexels_api_key:
+                # タイトルからシーンキーワードを抽出してPexelsから取得
+                parts = [p.strip() for p in video["title"].split("|")]
+                scene = parts[1] if len(parts) >= 2 else parts[0]
+                bg = fetch_pexels_background(scene, bg_path, pexels_api_key)
+            elif channel == "jazz":
+                # Google DriveからJazz用の狼画像を取得
+                bg = fetch_drive_wolf_image(creds, cfg.IMAGE_FOLDER_ID, bg_path)
+            else:
+                bg = None
+
             if bg is None:
-                bg = create_gradient_background(frame_path, channel)
+                bg = create_gradient_background(bg_path, channel)
             frame_path = bg
 
             # タイトルから長さを解析
@@ -234,10 +233,11 @@ def process_channel(channel, client_secret_path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("使い方: python3 rethumbnail.py [chill|jazz] <client_secret.jsonのパス>")
+        print("使い方: python3 rethumbnail.py [chill|jazz] <client_secret.json> [pexels_api_key]")
         print()
         print("例:")
-        print("  python3 rethumbnail.py chill ~/Downloads/client_secret_158927624501-xxx.json")
+        print("  python3 rethumbnail.py chill ~/Downloads/client_secret_158927624501-xxx.json YOUR_PEXELS_KEY")
         print("  python3 rethumbnail.py jazz  ~/Desktop/client_secret_594268582890-xxx.json")
         sys.exit(1)
-    process_channel(sys.argv[1].lower(), sys.argv[2])
+    pexels_key = sys.argv[3] if len(sys.argv) >= 4 else None
+    process_channel(sys.argv[1].lower(), sys.argv[2], pexels_key)
