@@ -1,4 +1,5 @@
 import os
+import re
 
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
@@ -84,23 +85,40 @@ def create_thumbnail(title, output_path="work/thumbnail.jpg", background_path=No
     return output_path
 
 
+def _extract_core_text(title):
+    """
+    タイトルからサムネイル用コアテキストを抽出。
+    - "Jazz BGM | 3AM Jazz Bar for Reading & Whiskey | 3H" → "3AM Jazz Bar"
+    - "Calming Chill Music | Ocean Waves | 3H Relaxing BGM" → "Ocean Waves"
+    - "Coffee Shop Music | Serene Cafe Bossa Nova | 3 Hours BGM" → "Serene Cafe Bossa Nova"
+    - "Velvet Midnight Jazz for Creative Writing | 3H BGM" → "Velvet Midnight Jazz"
+    """
+    parts = [p.strip() for p in title.split("|")]
+
+    # 2番目のセグメントを候補に
+    if len(parts) >= 2:
+        candidate = parts[1]
+        # 時間表記・BGMだけのセグメントは除外
+        if re.match(r'^\d+\.?\d*\s*(H\b|Hours?|Min|BGM)', candidate, re.IGNORECASE):
+            candidate = parts[0]
+    else:
+        candidate = parts[0]
+
+    # 最大3単語に制限
+    words = candidate.split()
+    if len(words) > 3:
+        candidate = " ".join(words[:3])
+
+    return candidate
+
+
 def _render_minimal(draw, title, target_hours, accent_color):
     """
-    ミニマルデザイン：
-    - メインワード（大）を下部中央
+    ミニマルデザイン（全チャンネル共通）：
+    - コアワード（大・中央）
     - 時間表記（小）をその下
     """
-    # タイトルから核心ワードを抽出（"|"で区切られた2番目のパート）
-    parts = title.split("|")
-    if len(parts) >= 2:
-        main_text = parts[1].strip()
-    else:
-        main_text = parts[0].strip()
-
-    # 長すぎる場合は短縮
-    words = main_text.split()
-    if len(words) > 4:
-        main_text = " ".join(words[:4])
+    main_text = _extract_core_text(title)
 
     font_main = _load_font(88)
     font_hours = _load_font(36)
@@ -123,7 +141,16 @@ def _render_minimal(draw, title, target_hours, accent_color):
                             fill=(255, 255, 255), shadow=True)
 
     # 時間表記（細く・小さく）
-    hour_text = f"{target_hours} Hours"
+    if target_hours == 0.5:
+        hour_text = "30 Min"
+    elif target_hours == 1.0:
+        hour_text = "1 Hour"
+    elif target_hours == 1.5:
+        hour_text = "90 Min"
+    elif target_hours % 1 == 0:
+        hour_text = f"{int(target_hours)} Hours"
+    else:
+        hour_text = f"{target_hours} Hours"
     _draw_text_centered(draw, int(720 * 0.82), hour_text, font_hours,
                         fill=(*accent_color, 210), shadow=False)
 

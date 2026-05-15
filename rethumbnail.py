@@ -73,17 +73,18 @@ def download_video_frame(video_id, path):
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
-    # 複数のフレーム番号を試みる（解像度が取れるまで）
-    for frame_num in ["maxresdefault", "sddefault", "hqdefault", "0"]:
+    # 1.jpg / 2.jpg / 3.jpg = YouTubeが動画から自動生成したフレーム（カスタムサムネイルとは別）
+    # maxresdefault.jpg はカスタムサムネイル（テキスト入り）が返るため使わない
+    for frame_num in ["1", "2", "3", "0"]:
         try:
             url = f"https://img.youtube.com/vi/{video_id}/{frame_num}.jpg"
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=30, context=ctx) as r:
                 data = r.read()
 
-            # maxresdefault が 404 の場合は 120x90 の小さい画像が返ることがあるのでサイズ確認
-            if len(data) < 5000 and frame_num == "maxresdefault":
-                print(f"    maxresdefault が小さすぎるため次を試みます")
+            # 小さすぎる（エラー画像）は除外
+            if len(data) < 3000:
+                print(f"    {frame_num}.jpg が小さすぎるためスキップ")
                 continue
 
             with open(path, "wb") as f:
@@ -126,12 +127,12 @@ def process_channel(channel, client_secret_path):
     if channel == "chill":
         cfg = chill_config
         accent_color = (0, 220, 180)
-        style = "standard"
+        style = "minimal"
         print("=== Chill チャンネルのサムネイルを更新 ===\n")
     elif channel == "jazz":
         cfg = jazz_config
         accent_color = (220, 180, 60)
-        style = "standard"
+        style = "minimal"
         print("=== Jazz チャンネルのサムネイルを更新 ===\n")
     else:
         print("使い方: python3 rethumbnail.py [chill|jazz] <client_secret.jsonのパス>")

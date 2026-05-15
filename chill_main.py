@@ -164,6 +164,7 @@ def main():
         channel_name=config.CHANNEL_NAME,
         target_hours=target_hours,
         accent_color=(0, 220, 180),  # Chill: ティール
+        style="minimal",
     )
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
 
