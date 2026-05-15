@@ -191,8 +191,16 @@ def process_channel(channel, client_secret_path, pexels_api_key=None):
                 prompt = f"peaceful {scene} landscape photography cinematic 4k"
                 bg = generate_pollinations_image(prompt, bg_path)
             elif channel == "jazz":
-                # Pollinations.aiでノワール狼画像を生成
-                prompt = "noir jazz lounge anthropomorphic wolf detective fedora dark red candlelight atmospheric"
+                # タイトルからムードを抽出してPollinations.aiで狼画像を生成（動画ごとに異なる）
+                parts = [p.strip() for p in video["title"].split("|")]
+                mood = parts[1] if len(parts) >= 2 else parts[0]
+                words = mood.split()[:3]
+                mood_str = " ".join(words).lower()
+                prompt = (
+                    f"anthropomorphic wolf detective fedora hat smoking cigarette "
+                    f"{mood_str} noir jazz bar dark red crimson black atmospheric "
+                    f"anime illustration style cinematic moody"
+                )
                 bg = generate_pollinations_image(prompt, bg_path)
             else:
                 bg = None
