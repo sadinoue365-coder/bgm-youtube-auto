@@ -65,26 +65,23 @@ def get_all_videos(youtube):
 
 def download_video_frame(video_id, path):
     """
-    YouTubeの自動生成フレームをダウンロード。
-    カスタムサムネイル（テキスト入り）ではなく、動画フレームそのものを取得。
-    0.jpg / 1.jpg / 2.jpg / 3.jpg はYouTubeが自動生成する動画フレーム。
+    YouTubeの自動生成フレームをダウンロード（1.jpg / 2.jpg / 3.jpg のみ試みる）。
+    0.jpg / maxresdefault.jpg はカスタムサムネイルが返ることがあるため使わない。
+    取得できなければ None を返す。
     """
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
-    # 1.jpg / 2.jpg / 3.jpg = YouTubeが動画から自動生成したフレーム（カスタムサムネイルとは別）
-    # maxresdefault.jpg はカスタムサムネイル（テキスト入り）が返るため使わない
-    for frame_num in ["1", "2", "3", "0"]:
+    for frame_num in ["1", "2", "3"]:
         try:
             url = f"https://img.youtube.com/vi/{video_id}/{frame_num}.jpg"
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=30, context=ctx) as r:
                 data = r.read()
 
-            # 小さすぎる（エラー画像）は除外
-            if len(data) < 3000:
-                print(f"    {frame_num}.jpg が小さすぎるためスキップ")
+            # 小さすぎる（プレースホルダー画像）は除外
+            if len(data) < 5000:
                 continue
 
             with open(path, "wb") as f:
@@ -92,11 +89,36 @@ def download_video_frame(video_id, path):
             print(f"    フレーム取得: {frame_num}.jpg ({len(data)//1024}KB)")
             return path
 
-        except Exception as e:
-            print(f"    {frame_num}.jpg 失敗: {e}")
+        except Exception:
             continue
 
-    raise Exception(f"動画フレームを取得できませんでした: {video_id}")
+    return None  # 取得できなかった場合
+
+
+def create_gradient_background(path, channel):
+    """
+    チャンネルカラーのグラデーション背景を生成。
+    自動フレームが取得できない場合のフォールバック。
+    """
+    from PIL import Image, ImageDraw
+    w, h = 1280, 720
+    img = Image.new("RGB", (w, h))
+    draw = ImageDraw.Draw(img)
+
+    if channel == "jazz":
+        top, bottom = (25, 5, 5), (8, 0, 0)      # 深紅〜漆黒
+    else:  # chill
+        top, bottom = (5, 20, 35), (0, 35, 55)   # 深海ブルー
+
+    for i in range(h):
+        r = int(top[0] + (bottom[0] - top[0]) * i / h)
+        g = int(top[1] + (bottom[1] - top[1]) * i / h)
+        b = int(top[2] + (bottom[2] - top[2]) * i / h)
+        draw.line([(0, i), (w, i)], fill=(r, g, b))
+
+    img.save(path, "JPEG", quality=92)
+    print(f"    グラデーション背景を使用")
+    return path
 
 
 def parse_hours_from_title(title):
@@ -150,9 +172,12 @@ def process_channel(channel, client_secret_path):
         print(f"[{i+1}/{len(videos)}] {video['title'][:60]}")
 
         try:
-            # 動画フレームをダウンロード（テキストなし・クリーンな背景）
+            # 動画フレームを試みる（取得できなければグラデーション背景を使用）
             frame_path = "work/video_frame.jpg"
-            download_video_frame(video["id"], frame_path)
+            bg = download_video_frame(video["id"], frame_path)
+            if bg is None:
+                bg = create_gradient_background(frame_path, channel)
+            frame_path = bg
 
             # タイトルから長さを解析
             target_hours = parse_hours_from_title(video["title"])
