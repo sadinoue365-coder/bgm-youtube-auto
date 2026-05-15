@@ -65,34 +65,57 @@ def get_all_videos(youtube):
 
 def download_video_frame(video_id, path):
     """
-    YouTubeの自動生成フレームをダウンロード（1.jpg / 2.jpg / 3.jpg のみ試みる）。
-    0.jpg / maxresdefault.jpg はカスタムサムネイルが返ることがあるため使わない。
-    取得できなければ None を返す。
+    yt-dlp で動画の最初の30秒を最低画質でダウンロードし、ffmpegでフレームを抽出。
+    実際の背景画像をテキストなしで取得できる唯一の確実な方法。
+    失敗した場合は None を返す。
     """
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    import subprocess
+    import glob
 
-    for frame_num in ["1", "2", "3"]:
-        try:
-            url = f"https://img.youtube.com/vi/{video_id}/{frame_num}.jpg"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=30, context=ctx) as r:
-                data = r.read()
+    tmp_video = f"work/tmp_{video_id}"
+    url = f"https://www.youtube.com/watch?v={video_id}"
 
-            # 小さすぎる（プレースホルダー画像）は除外
-            if len(data) < 5000:
-                continue
+    try:
+        # 最低画質で最初の35秒のみダウンロード
+        subprocess.run([
+            "yt-dlp",
+            "--format", "worstvideo[ext=mp4]/worst[ext=mp4]/worst",
+            "--download-sections", "*0:00-0:35",
+            "--output", tmp_video + ".%(ext)s",
+            "--no-playlist",
+            "--quiet",
+            url,
+        ], check=True, timeout=120)
 
-            with open(path, "wb") as f:
-                f.write(data)
-            print(f"    フレーム取得: {frame_num}.jpg ({len(data)//1024}KB)")
-            return path
+        # ダウンロードしたファイルを探す
+        files = glob.glob(tmp_video + ".*")
+        if not files:
+            return None
+        video_file = files[0]
 
-        except Exception:
-            continue
+        # 30秒時点のフレームを抽出（背景が安定している）
+        subprocess.run([
+            "ffmpeg", "-y",
+            "-ss", "30",
+            "-i", video_file,
+            "-frames:v", "1",
+            "-q:v", "2",
+            path,
+        ], check=True, timeout=30, capture_output=True)
 
-    return None  # 取得できなかった場合
+        # 一時ファイルを削除
+        os.remove(video_file)
+
+        print(f"    フレーム抽出: 動画30秒地点")
+        return path
+
+    except Exception as e:
+        print(f"    フレーム取得失敗: {e}")
+        # 一時ファイルをクリーンアップ
+        for f in glob.glob(tmp_video + ".*"):
+            try: os.remove(f)
+            except: pass
+        return None
 
 
 def create_gradient_background(path, channel):
