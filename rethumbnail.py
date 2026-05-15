@@ -78,6 +78,52 @@ def fetch_pexels_background(scene_keyword, output_path, pexels_api_key):
         return None
 
 
+def get_channel_icon_url(youtube):
+    """チャンネルアイコンURLを取得（kontextのbase imageとして使用）"""
+    try:
+        resp = youtube.channels().list(part="snippet", mine=True).execute()
+        if resp["items"]:
+            thumbnails = resp["items"][0]["snippet"]["thumbnails"]
+            for size in ["high", "medium", "default"]:
+                if size in thumbnails:
+                    return thumbnails[size]["url"]
+    except Exception as e:
+        print(f"    アイコンURL取得失敗: {e}")
+    return None
+
+
+def generate_kontext_wolf_image(prompt, base_image_url, output_path):
+    """Pollinations.ai kontextでチャンネルアイコンを参照して狼画像を生成"""
+    import urllib.parse
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    encoded_prompt = urllib.parse.quote(prompt)
+    encoded_image = urllib.parse.quote(base_image_url)
+    url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?model=kontext&image={encoded_image}&width=1920&height=1080&nologo=true"
+    )
+
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                wait = 15 * attempt
+                print(f"    {wait}秒待機してリトライ...")
+                time.sleep(wait)
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=90, context=ctx) as r:
+                data = r.read()
+            with open(output_path, "wb") as f:
+                f.write(data)
+            print(f"    kontext狼画像生成: '{prompt[:40]}'")
+            return output_path
+        except Exception as e:
+            print(f"    kontext生成失敗 (attempt {attempt+1}): {e}")
+    return None
+
+
 def generate_pollinations_image(prompt, output_path):
     """Pollinations.aiで画像を生成（APIキー不要）、429時はリトライ"""
     import urllib.parse
@@ -180,6 +226,15 @@ def process_channel(channel, client_secret_path, pexels_api_key=None):
     videos = get_all_videos(youtube)
     print(f"  {len(videos)} 本の動画が見つかりました\n")
 
+    # Jazz用: チャンネルアイコンURLを取得（kontext参照用）
+    channel_icon_url = None
+    if channel == "jazz":
+        channel_icon_url = get_channel_icon_url(youtube)
+        if channel_icon_url:
+            print(f"  チャンネルアイコン取得: {channel_icon_url[:60]}...")
+        else:
+            print("  チャンネルアイコン取得失敗 → 通常生成にフォールバック")
+
     success = 0
     for i, video in enumerate(videos):
         print(f"[{i+1}/{len(videos)}] {video['title'][:60]}")
@@ -199,17 +254,20 @@ def process_channel(channel, client_secret_path, pexels_api_key=None):
                 prompt = f"peaceful {scene} landscape photography cinematic 4k"
                 bg = generate_pollinations_image(prompt, bg_path)
             elif channel == "jazz":
-                # タイトルからムードを抽出してPollinations.aiで狼画像を生成（動画ごとに異なる）
+                # チャンネルアイコンを参照してkontextでキャラクター一貫性のある狼画像を生成
                 parts = [p.strip() for p in video["title"].split("|")]
                 mood = parts[1] if len(parts) >= 2 else parts[0]
-                words = mood.split()[:3]
-                mood_str = " ".join(words).lower()
+                mood_str = " ".join(mood.split()[:3]).lower()
                 prompt = (
-                    f"anthropomorphic wolf detective fedora hat smoking cigarette "
-                    f"{mood_str} noir jazz bar dark red crimson black atmospheric "
-                    f"anime illustration style cinematic moody"
+                    f"Keep the wolf character exactly the same. "
+                    f"Change only the scene: {mood_str} jazz setting. "
+                    f"Maintain the anime illustration style, noir atmosphere, "
+                    f"crimson red and black color palette, and fedora hat."
                 )
-                bg = generate_pollinations_image(prompt, bg_path)
+                if channel_icon_url:
+                    bg = generate_kontext_wolf_image(prompt, channel_icon_url, bg_path)
+                else:
+                    bg = generate_pollinations_image(prompt, bg_path)
             else:
                 bg = None
 
