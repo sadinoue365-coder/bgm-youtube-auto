@@ -29,6 +29,7 @@ from agents.thumbnail_agent import create_thumbnail
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube",
+    "https://www.googleapis.com/auth/drive.readonly",
 ]
 
 
@@ -254,19 +255,18 @@ def process_channel(channel, client_secret_path, pexels_api_key=None):
                 prompt = f"peaceful {scene} landscape photography cinematic 4k"
                 bg = generate_pollinations_image(prompt, bg_path)
             elif channel == "jazz":
-                # チャンネルアイコンを参照してkontextでキャラクター一貫性のある狼画像を生成
-                parts = [p.strip() for p in video["title"].split("|")]
-                mood = parts[1] if len(parts) >= 2 else parts[0]
-                mood_str = " ".join(mood.split()[:3]).lower()
-                prompt = (
-                    f"Keep the wolf character exactly the same. "
-                    f"Change only the scene: {mood_str} jazz setting. "
-                    f"Maintain the anime illustration style, noir atmosphere, "
-                    f"crimson red and black color palette, and fedora hat."
-                )
-                if channel_icon_url:
-                    bg = generate_kontext_wolf_image(prompt, channel_icon_url, bg_path)
+                # Google DriveからJazz用の狼画像をランダムに取得
+                if pexels_api_key:  # jazz用にはfolder_idをpexels_api_keyとして流用
+                    bg = fetch_drive_wolf_image(creds, pexels_api_key, bg_path)
                 else:
+                    parts = [p.strip() for p in video["title"].split("|")]
+                    mood = parts[1] if len(parts) >= 2 else parts[0]
+                    mood_str = " ".join(mood.split()[:3]).lower()
+                    prompt = (
+                        f"anthropomorphic wolf detective fedora hat smoking "
+                        f"{mood_str} noir jazz bar dark red crimson atmospheric "
+                        f"anime illustration style cinematic moody"
+                    )
                     bg = generate_pollinations_image(prompt, bg_path)
             else:
                 bg = None
@@ -307,11 +307,11 @@ def process_channel(channel, client_secret_path, pexels_api_key=None):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("使い方: python3 rethumbnail.py [chill|jazz] <client_secret.json> [pexels_api_key]")
+        print("使い方: python3 rethumbnail.py [chill|jazz] <client_secret.json> [pexels_key_or_drive_folder_id]")
         print()
         print("例:")
         print("  python3 rethumbnail.py chill ~/Downloads/client_secret_158927624501-xxx.json YOUR_PEXELS_KEY")
-        print("  python3 rethumbnail.py jazz  ~/Desktop/client_secret_594268582890-xxx.json")
+        print("  python3 rethumbnail.py jazz  ~/Desktop/client_secret_594268582890-xxx.json DRIVE_FOLDER_ID")
         sys.exit(1)
-    pexels_key = sys.argv[3] if len(sys.argv) >= 4 else None
-    process_channel(sys.argv[1].lower(), sys.argv[2], pexels_key)
+    extra_key = sys.argv[3] if len(sys.argv) >= 4 else None
+    process_channel(sys.argv[1].lower(), sys.argv[2], extra_key)
