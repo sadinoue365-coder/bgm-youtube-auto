@@ -78,32 +78,25 @@ def fetch_pexels_background(scene_keyword, output_path, pexels_api_key):
         return None
 
 
-def fetch_drive_wolf_image(creds, image_folder_id, output_path):
-    """Google DriveからJazz用の狼画像をランダムに取得"""
-    import io as _io
-    from googleapiclient.http import MediaIoBaseDownload
+def generate_pollinations_image(prompt, output_path):
+    """Pollinations.aiで画像を生成（APIキー不要）"""
+    import urllib.parse
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    encoded = urllib.parse.quote(prompt)
+    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1920&height=1080&model=flux&nologo=true"
     try:
-        drive = build("drive", "v3", credentials=creds)
-        results = drive.files().list(
-            q=f"'{image_folder_id}' in parents and mimeType contains 'image/' and trashed=false",
-            fields="files(id, name)",
-            pageSize=200,
-        ).execute()
-        files = results.get("files", [])
-        if not files:
-            return None
-        import random
-        chosen = random.choice(files)
-        request = drive.files().get_media(fileId=chosen["id"])
-        with _io.FileIO(output_path, "wb") as fh:
-            downloader = MediaIoBaseDownload(fh, request)
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
-        print(f"    Drive画像取得: {chosen['name']}")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=60, context=ctx) as r:
+            data = r.read()
+        with open(output_path, "wb") as f:
+            f.write(data)
+        print(f"    AI画像生成: '{prompt[:40]}'")
         return output_path
     except Exception as e:
-        print(f"    Drive画像取得失敗: {e}")
+        print(f"    AI画像生成失敗: {e}")
         return None
 
 
@@ -191,9 +184,16 @@ def process_channel(channel, client_secret_path, pexels_api_key=None):
                 parts = [p.strip() for p in video["title"].split("|")]
                 scene = parts[1] if len(parts) >= 2 else parts[0]
                 bg = fetch_pexels_background(scene, bg_path, pexels_api_key)
+            elif channel == "chill":
+                # Pexelsキーなし → Pollinations.aiで自然風景を生成
+                parts = [p.strip() for p in video["title"].split("|")]
+                scene = parts[1] if len(parts) >= 2 else "peaceful nature"
+                prompt = f"peaceful {scene} landscape photography cinematic 4k"
+                bg = generate_pollinations_image(prompt, bg_path)
             elif channel == "jazz":
-                # Google DriveからJazz用の狼画像を取得
-                bg = fetch_drive_wolf_image(creds, cfg.IMAGE_FOLDER_ID, bg_path)
+                # Pollinations.aiでノワール狼画像を生成
+                prompt = "noir jazz lounge anthropomorphic wolf detective fedora dark red candlelight atmospheric"
+                bg = generate_pollinations_image(prompt, bg_path)
             else:
                 bg = None
 
