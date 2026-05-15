@@ -79,7 +79,7 @@ def fetch_pexels_background(scene_keyword, output_path, pexels_api_key):
 
 
 def generate_pollinations_image(prompt, output_path):
-    """Pollinations.aiで画像を生成（APIキー不要）"""
+    """Pollinations.aiで画像を生成（APIキー不要）、429時はリトライ"""
     import urllib.parse
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -87,17 +87,25 @@ def generate_pollinations_image(prompt, output_path):
 
     encoded = urllib.parse.quote(prompt)
     url = f"https://image.pollinations.ai/prompt/{encoded}?width=1920&height=1080&model=flux&nologo=true"
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=60, context=ctx) as r:
-            data = r.read()
-        with open(output_path, "wb") as f:
-            f.write(data)
-        print(f"    AI画像生成: '{prompt[:40]}'")
-        return output_path
-    except Exception as e:
-        print(f"    AI画像生成失敗: {e}")
-        return None
+
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                wait = 15 * attempt
+                print(f"    {wait}秒待機してリトライ...")
+                time.sleep(wait)
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=90, context=ctx) as r:
+                data = r.read()
+            with open(output_path, "wb") as f:
+                f.write(data)
+            print(f"    AI画像生成: '{prompt[:40]}'")
+            return output_path
+        except Exception as e:
+            print(f"    AI画像生成失敗 (attempt {attempt+1}): {e}")
+            if attempt == 2:
+                return None
+    return None
 
 
 def create_gradient_background(path, channel):
@@ -233,8 +241,8 @@ def process_channel(channel, client_secret_path, pexels_api_key=None):
         except Exception as e:
             print(f"    ❌ エラー: {e}")
 
-        # API制限対策
-        time.sleep(1)
+        # API制限対策（Pollinations.ai レート制限回避のため少し長めに待機）
+        time.sleep(8)
 
     print(f"\n✅ 完了！ {success}/{len(videos)} 本のサムネイルを更新しました")
 
