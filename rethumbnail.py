@@ -79,6 +79,32 @@ def fetch_pexels_background(scene_keyword, output_path, pexels_api_key):
         return None
 
 
+def fetch_drive_wolf_image(creds, folder_id, output_path):
+    """Google DriveのフォルダからランダムにJazz狼画像を取得（スクリーンショット除外）"""
+    import random
+    try:
+        drive = build("drive", "v3", credentials=creds)
+        results = drive.files().list(
+            q=f"'{folder_id}' in parents and mimeType contains 'image/' and trashed=false",
+            fields="files(id, name)",
+            pageSize=100,
+        ).execute()
+        all_files = results.get("files", [])
+        files = [f for f in all_files if "スクリーンショット" not in f["name"] and "screenshot" not in f["name"].lower()]
+        if not files:
+            print(f"    Driveフォルダに使用可能な画像なし (全{len(all_files)}件中スクリーンショットを除外後0件)")
+            return None
+        chosen = random.choice(files)
+        print(f"    Drive画像取得: {chosen['name']}")
+        request = drive.files().get_media(fileId=chosen["id"])
+        with open(output_path, "wb") as f:
+            f.write(request.execute())
+        return output_path
+    except Exception as e:
+        print(f"    Drive画像取得失敗: {e}")
+        return None
+
+
 def get_channel_icon_url(youtube):
     """チャンネルアイコンURLを取得（kontextのbase imageとして使用）"""
     try:

@@ -1,9 +1,14 @@
 import io
 import os
 import random
+import ssl
 import time
 import urllib.parse
 import urllib.request
+
+_SSL_CTX = ssl.create_default_context()
+_SSL_CTX.check_hostname = False
+_SSL_CTX.verify_mode = ssl.CERT_NONE
 
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
@@ -23,6 +28,14 @@ SCENES = [
     "sitting alone in a jazz club booth",
     "adjusting his fedora in a mirror reflection",
     "smoking a cigarette under a street lamp",
+    "pouring whiskey at a dimly lit bar",
+    "gazing at rain-soaked city streets from a fire escape",
+    "playing piano in an empty jazz club at 3am",
+    "lighting a cigarette in a shadowy doorway",
+    "silhouette against a neon-lit window",
+    "sitting across a chess board in a smoky lounge",
+    "walking under a streetlamp in heavy rain",
+    "leaning on a jukebox in a late-night diner",
 ]
 
 BASE_PROMPT = (
@@ -36,8 +49,57 @@ BASE_PROMPT = (
 )
 
 
-def _get_random_image_id(creds, folder_id):
-    """Drive フォルダから画像ファイルをランダムに1件選んでIDを返す"""
+def _generate_flux_image(scene, output_path, retries=4):
+    """Pollinations.ai Flux モデルでシーン別狼画像を生成"""
+    full_prompt = BASE_PROMPT + scene
+    encoded_prompt = urllib.parse.quote(full_prompt)
+    seed = random.randint(1, 999999)
+
+    url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?width=1920&height=1080&seed={seed}&model=flux&nologo=true"
+    )
+
+    # GitHub Actions環境ではデフォルトSSLを優先、失敗時はCERT_NONE
+    ssl_contexts = [None, _SSL_CTX]
+
+    for attempt in range(retries):
+        try:
+            if attempt > 0:
+                wait = 20 * attempt
+                print(f"  {wait}秒待機してリトライ...")
+                time.sleep(wait)
+            ctx = ssl_contexts[min(attempt, len(ssl_contexts) - 1)]
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; BGM-Bot/1.0)"},
+            )
+            kwargs = {"timeout": 180}
+            if ctx:
+                kwargs["context"] = ctx
+            with urllib.request.urlopen(req, **kwargs) as response:
+                content_type = response.headers.get("Content-Type", "")
+                data = response.read()
+
+            # 画像かどうか検証（最低30KB、Content-Typeが画像）
+            if len(data) < 30000:
+                print(f"  Flux attempt {attempt+1}: レスポンスが小さすぎる ({len(data)} bytes) → リトライ")
+                continue
+            if "image" not in content_type and not data[:4] in (b'\xff\xd8\xff\xe0', b'\x89PNG'):
+                print(f"  Flux attempt {attempt+1}: 画像ではないレスポンス → リトライ")
+                continue
+
+            with open(output_path, "wb") as f:
+                f.write(data)
+            print(f"  Flux生成成功: '{scene[:50]}' ({len(data)//1024}KB)")
+            return True
+        except Exception as e:
+            print(f"  Flux attempt {attempt+1} failed: {e}")
+    return False
+
+
+def _download_from_drive(creds, folder_id, output_path):
+    """フォールバック：DriveフォルダからランダムにDL"""
     service = build("drive", "v3", credentials=creds)
     results = service.files().list(
         q=(
@@ -47,86 +109,40 @@ def _get_random_image_id(creds, folder_id):
         fields="files(id, name)",
         pageSize=100,
     ).execute()
-    files = results.get("files", [])
+    all_files = results.get("files", [])
+    files = [
+        f for f in all_files
+        if "スクリーンショット" not in f["name"]
+        and "screenshot" not in f["name"].lower()
+    ]
     if not files:
-        raise Exception("Google Drive の画像フォルダに画像が見つかりません")
+        raise Exception("Drive フォルダに使用可能な画像がありません")
+
     chosen = random.choice(files)
-    print(f"  Base image selected: {chosen['name']}")
-    return chosen["id"], chosen["name"]
-
-
-def _pollinations_img2img(file_id, scene, output_path, retries=3):
-    """
-    Pollinations.ai の kontext モデルで img2img 生成。
-    kontextはBlack Forest Labs製の画像編集専用モデル。
-    Drive の公開URLを参照画像として渡す。
-    フォルダは「リンクを知っている全員が閲覧可」に設定が必要。
-    """
-    # Google Drive 公開ダウンロードURL
-    base_image_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    encoded_image_url = urllib.parse.quote(base_image_url, safe="")
-
-    # kontextはキャラクターを保持しながらシーンを変えるのに特化
-    full_prompt = (
-        f"Keep the wolf character exactly the same. Change only the scene: {scene}. "
-        "Maintain the anime illustration style, noir atmosphere, "
-        "crimson red and black color palette, and fedora hat."
-    )
-    encoded_prompt = urllib.parse.quote(full_prompt)
-    seed = random.randint(1, 99999)
-
-    url = (
-        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1920&height=1080&seed={seed}&model=kontext&nologo=true"
-        f"&image={encoded_image_url}"
-    )
-
-    for attempt in range(retries):
-        try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": "Mozilla/5.0 (compatible; BGM-Bot/1.0)"},
-            )
-            with urllib.request.urlopen(req, timeout=180) as response:
-                with open(output_path, "wb") as f:
-                    f.write(response.read())
-            return True
-        except Exception as e:
-            print(f"  Pollinations attempt {attempt+1} failed: {e}")
-            if attempt < retries - 1:
-                time.sleep(10)
-    return False
-
-
-def _download_from_drive(creds, file_id, output_path):
-    """フォールバック：参照画像をそのままDriveからダウンロードして使う"""
-    service = build("drive", "v3", credentials=creds)
-    request = service.files().get_media(fileId=file_id)
+    print(f"  Fallback: Drive画像を使用 ({chosen['name']})")
+    request = service.files().get_media(fileId=chosen["id"])
     with io.FileIO(output_path, "wb") as fh:
         downloader = MediaIoBaseDownload(fh, request)
         done = False
         while not done:
             _, done = downloader.next_chunk()
-    print("  Fallback: using original Drive image directly")
 
 
 def generate_wolf_image(creds, folder_id, output_path="work/wolf_bg.jpg"):
     """
-    Drive の画像フォルダからランダムに1枚選び、
-    Pollinations.ai img2img で新しいシーンの画像を生成する。
-    生成に失敗した場合はDrive画像をそのまま使用。
+    Pollinations.ai Flux でシーン別の狼画像を生成する。
+    生成に失敗した場合は Drive フォルダの画像をフォールバックとして使用。
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    file_id, file_name = _get_random_image_id(creds, folder_id)
     scene = random.choice(SCENES)
     print(f"  Scene: {scene}")
 
-    success = _pollinations_img2img(file_id, scene, output_path)
+    success = _generate_flux_image(scene, output_path)
 
     if not success:
-        print("  img2img failed. Using original Drive image as fallback.")
-        _download_from_drive(creds, file_id, output_path)
-        scene = os.path.splitext(file_name)[0]
+        print("  Flux生成失敗。Driveフォールバックを使用。")
+        _download_from_drive(creds, folder_id, output_path)
+        scene = "jazz noir wolf"
 
     return output_path, scene
