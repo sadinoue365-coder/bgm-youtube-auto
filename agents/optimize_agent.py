@@ -86,16 +86,17 @@ def get_credentials(client_secret_json, refresh_token):
     return creds
 
 
-# ─── 直近14日の動画取得 ──────────────────────────────────────────
+# ─── 7日前（±1日）の動画取得 ────────────────────────────────────
 def get_recent_videos(youtube, days=14):
+    """直近30日の動画を取得（中央値計算用）"""
     ch = youtube.channels().list(part="contentDetails", mine=True).execute()
     playlist_id = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
 
     resp = youtube.playlistItems().list(
-        part="snippet", playlistId=playlist_id, maxResults=30
+        part="snippet", playlistId=playlist_id, maxResults=50
     ).execute()
 
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=30)
     videos = []
     for item in resp.get("items", []):
         pub_str = item["snippet"]["publishedAt"]
@@ -107,6 +108,17 @@ def get_recent_videos(youtube, days=14):
                 "published_at": pub_dt,
             })
     return videos
+
+
+def get_target_videos(all_videos):
+    """最適化対象：投稿から6〜8日経った動画のみ（各動画を1回だけ処理）"""
+    now = datetime.now(timezone.utc)
+    targets = []
+    for v in all_videos:
+        age_days = (now - v["published_at"]).days
+        if 6 <= age_days <= 8:
+            targets.append(v)
+    return targets
 
 
 # ─── 動画の詳細（統計+snippet）取得 ─────────────────────────────
@@ -182,55 +194,60 @@ def optimize_channel(channel_key, cfg):
             print("  直近14日の動画なし → スキップ")
             return
 
-        # 視聴数取得
-        video_data = []
+        # 直近30日の全動画で中央値を計算
+        all_data = []
         for v in videos:
             detail = get_video_detail(youtube, v["id"])
             if detail:
                 views = int(detail["statistics"].get("viewCount", 0))
                 age_days = (datetime.now(timezone.utc) - v["published_at"]).days
-                video_data.append({
+                all_data.append({
                     "id": v["id"],
                     "views": views,
                     "age_days": age_days,
                     "snippet": detail["snippet"],
                 })
-                print(f"  {v['title'][:55]} | {views}views / {age_days}日")
+                print(f"  {v['title'][:50]} | {views}views / {age_days}日")
 
-        if not video_data:
+        if not all_data:
             return
 
-        # 中央値計算
-        median_views = statistics.median([v["views"] for v in video_data])
-        print(f"\n  中央値: {median_views:.0f} views")
+        median_views = statistics.median([v["views"] for v in all_data])
+        print(f"\n  中央値 (直近30日): {median_views:.0f} views")
 
-        # 各動画を評価・最適化
+        # 最適化対象：6〜8日前の動画のみ
+        targets = [v for v in all_data if 6 <= v["age_days"] <= 8]
+        print(f"  最適化対象 (6〜8日前): {len(targets)}本")
+
+        if not targets:
+            print("  対象動画なし → スキップ")
+            return
+
+        # 評価・最適化（年齢補正不要 = 全部7日前後で同条件）
         optimized = 0
-        for v in video_data:
-            if v["age_days"] <= 7:
-                severe_threshold = 0.30
-                mild_threshold   = None
-            else:
-                severe_threshold = 0.50
-                mild_threshold   = 0.70
-
+        for v in targets:
             ratio = v["views"] / median_views if median_views > 0 else 1.0
             snippet = v["snippet"]
 
-            if ratio <= severe_threshold:
-                print(f"\n  ⚠️  深刻 ({v['views']}views / 中央値比{ratio:.0%}) → {snippet['title'][:50]}")
+            if ratio <= 0.50:
+                print(f"\n  ⚠️  深刻 ({v['views']}views / 中央値比{ratio:.0%})")
+                print(f"     → {snippet['title'][:60]}")
                 update_tags(youtube, v["id"], snippet, cfg["extra_tags"])
                 update_description(youtube, v["id"], snippet, cfg["desc_footer"])
                 update_title(youtube, v["id"], snippet, cfg["title_suffix"])
                 optimized += 1
 
-            elif mild_threshold and ratio <= mild_threshold:
-                print(f"\n  📉 軽微 ({v['views']}views / 中央値比{ratio:.0%}) → {snippet['title'][:50]}")
+            elif ratio <= 0.70:
+                print(f"\n  📉 軽微 ({v['views']}views / 中央値比{ratio:.0%})")
+                print(f"     → {snippet['title'][:60]}")
                 update_tags(youtube, v["id"], snippet, cfg["extra_tags"])
                 update_description(youtube, v["id"], snippet, cfg["desc_footer"])
                 optimized += 1
 
-        print(f"\n  ✅ {optimized}/{len(video_data)} 本を最適化")
+            else:
+                print(f"  ✓ 問題なし ({v['views']}views / 中央値比{ratio:.0%})")
+
+        print(f"\n  ✅ {optimized}/{len(targets)} 本を最適化")
 
     except Exception as e:
         print(f"  [{channel_key}] エラー: {e}")

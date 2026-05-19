@@ -2,7 +2,7 @@ name: Weekly Optimize
 
 on:
   schedule:
-    - cron: '0 1 * * 2,4,6'  # 火・木・土 10:00 JST（投稿翌日）
+    - cron: '0 2 * * *'  # 毎日 11:00 JST（投稿から7日後にチェック）
   workflow_dispatch:
 
 jobs:
