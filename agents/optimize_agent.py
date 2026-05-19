@@ -116,7 +116,7 @@ def get_target_videos(all_videos):
     targets = []
     for v in all_videos:
         age_days = (now - v["published_at"]).days
-        if 6 <= age_days <= 8:
+        if 7 <= age_days <= 8:
             targets.append(v)
     return targets
 
@@ -216,7 +216,7 @@ def optimize_channel(channel_key, cfg):
         print(f"\n  中央値 (直近30日): {median_views:.0f} views")
 
         # 最適化対象：6〜8日前の動画のみ
-        targets = [v for v in all_data if 6 <= v["age_days"] <= 8]
+        targets = [v for v in all_data if 7 <= v["age_days"] <= 8]
         print(f"  最適化対象 (6〜8日前): {len(targets)}本")
 
         if not targets:
