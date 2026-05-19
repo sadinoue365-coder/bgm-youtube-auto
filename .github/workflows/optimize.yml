@@ -22,8 +22,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run optimize agent
+      - name: Run optimize agent (all channels)
         env:
-          GOOGLE_CLIENT_SECRET_JSON: ${{ secrets.GOOGLE_CLIENT_SECRET_JSON }}
-          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          CHILL_CLIENT_SECRET_JSON: ${{ secrets.CHILL_CLIENT_SECRET_JSON }}
+          CHILL_REFRESH_TOKEN: ${{ secrets.CHILL_REFRESH_TOKEN }}
+          JAZZ_CLIENT_SECRET_JSON: ${{ secrets.JAZZ_CLIENT_SECRET_JSON }}
+          JAZZ_REFRESH_TOKEN: ${{ secrets.JAZZ_REFRESH_TOKEN }}
+          CAFE_CLIENT_SECRET_JSON: ${{ secrets.CAFE_CLIENT_SECRET_JSON }}
+          CAFE_REFRESH_TOKEN: ${{ secrets.CAFE_REFRESH_TOKEN }}
+          SLEEP_CLIENT_SECRET_JSON: ${{ secrets.SLEEP_CLIENT_SECRET_JSON }}
+          SLEEP_REFRESH_TOKEN: ${{ secrets.SLEEP_REFRESH_TOKEN }}
         run: python -c "from agents.optimize_agent import run; run()"
