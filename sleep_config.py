@@ -3,6 +3,7 @@ import os
 GDRIVE_FOLDER_ID = os.environ.get("SLEEP_GDRIVE_FOLDER_ID", "")
 REFRESH_TOKEN = os.environ.get("SLEEP_REFRESH_TOKEN", "")
 CLIENT_SECRET_JSON = os.environ.get("SLEEP_CLIENT_SECRET_JSON", "")
+PLAYLIST_ID = "PLScjgbej40yhad7DAiBRa7pxbB807Lcnx"
 
 CHANNEL_NAME = "Drift Into Sleep Music"
 NUM_SONGS = 20  # 130曲からランダムに20曲選んでループ

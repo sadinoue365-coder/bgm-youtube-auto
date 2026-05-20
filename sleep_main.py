@@ -28,7 +28,7 @@ SLEEP_STYLES = [
     "Delta Waves", "Soft Drones", "Gentle Rain",
     "Tibetan Bowls", "Ocean Drift", "Cosmic Drift",
     "Forest Night", "Deep Ambient", "Theta Waves",
-    "White Noise", "Healing Tones", "432Hz",
+    "White Noise", "Healing Tones", "Midnight Rain",
 ]
 
 MOODS = [
@@ -198,6 +198,23 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
     return video_id
 
 
+def add_to_playlist(creds, video_id, playlist_id):
+    service = build("youtube", "v3", credentials=creds)
+    service.playlistItems().insert(
+        part="snippet",
+        body={
+            "snippet": {
+                "playlistId": playlist_id,
+                "resourceId": {
+                    "kind": "youtube#video",
+                    "videoId": video_id,
+                },
+            }
+        },
+    ).execute()
+    print(f"  Added to playlist: {playlist_id}")
+
+
 def main():
     print("=== Drift Into Sleep Music ===\n")
 
@@ -242,6 +259,9 @@ def main():
     )
 
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
+
+    print("\nAdding to playlist...")
+    add_to_playlist(creds, video_id, config.PLAYLIST_ID)
 
     print("\nCleaning up...")
     cleanup(config.WORK_DIR)
