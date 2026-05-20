@@ -122,9 +122,9 @@ def generate_metadata(style, target_hours):
     dur = format_duration(target_hours)
     now = datetime.datetime.now()
 
-    title = f"⬛ Black Screen Sleep Music | {style} | {dur}"
+    title = f"Black Screen Sleep Music | {style} | {dur}"
 
-    description = f"""⬛ {dur} Black Screen Sleep Music — No light. Just sound.
+    description = f"""🌙 {dur} Black Screen Sleep Music — No light. Just sound.
 
 Screen stays completely BLACK the entire time.
 Safe to leave on all night without any light disturbing your sleep.
