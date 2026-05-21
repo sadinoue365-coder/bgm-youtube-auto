@@ -130,8 +130,19 @@ def _download_from_drive(creds, folder_id, output_path):
 
 def generate_wolf_image(creds, folder_id, output_path="work/wolf_bg.jpg"):
     """
-    Drive フォルダからランダムに狼画像を取得する。
+    Pollinations.ai Flux でシーン別の狼画像を生成する。
+    生成に失敗した場合は Drive フォルダの画像をフォールバックとして使用。
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    _download_from_drive(creds, folder_id, output_path)
-    return output_path, "jazz noir wolf"
+
+    scene = random.choice(SCENES)
+    print(f"  Scene: {scene}")
+
+    success = _generate_flux_image(scene, output_path)
+
+    if not success:
+        print("  Flux生成失敗。Driveフォールバックを使用。")
+        _download_from_drive(creds, folder_id, output_path)
+        scene = "jazz noir wolf"
+
+    return output_path, scene
