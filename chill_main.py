@@ -118,6 +118,13 @@ Perfect for:
 📅 {now.strftime('%B %Y')}
 
 #ChillMusic #RelaxingMusic #BGM #StudyMusic #WorkMusic #Meditation #Lofi #AmbientMusic
+
+─────────────────────────────
+🎵 More relaxing music on our channels:
+  🎷 Night Jazz BGM → Red Wolf's Lounge
+  ☕ Coffee Shop BGM → Coffee Shop Music Studio
+  🌙 Sleep Music    → Drift Into Sleep Music
+─────────────────────────────
 """
     tags = [
         "chill music", "relaxing music", "BGM", "study music", "work music",

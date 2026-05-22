@@ -148,6 +148,13 @@ Perfect for:
 
 #{style.replace(' ', '')} #NightJazz #NightMusic #BGM #JazzMusic
 #LateNightVibes #NoirJazz #RelaxingJazz #SmokyJazz #WorkMusic
+
+─────────────────────────────
+🎵 More relaxing music on our channels:
+  ☕ Coffee Shop BGM → Coffee Shop Music Studio
+  🌊 Chill & Study  → Chill Relax BGM
+  🌙 Sleep Music    → Drift Into Sleep Music
+─────────────────────────────
 """
 
     tags = [

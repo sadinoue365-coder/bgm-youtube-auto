@@ -150,6 +150,13 @@ Perfect for:
 #SleepMusic #BlackScreen #DeepSleep #SleepAid #InsomniaCure
 #AmbientMusic #DeltaWaves #Meditation #Relaxing #NoCopyrightMusic
 #{style.replace(' ', '').replace('Hz', 'Hz')}
+
+─────────────────────────────
+🎵 More relaxing music on our channels:
+  🎷 Night Jazz BGM → Red Wolf's Lounge
+  ☕ Coffee Shop BGM → Coffee Shop Music Studio
+  🌊 Chill & Study  → Chill Relax BGM
+─────────────────────────────
 """
 
     tags = [

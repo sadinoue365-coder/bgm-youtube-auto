@@ -148,6 +148,13 @@ Perfect for:
 
 #CoffeeShopMusic #CafeMusic #BGM #StudyMusic #WorkMusic
 #RelaxingMusic #BossaNova #JazzPiano #LofiJazz #CoffeeMusicJazz
+
+─────────────────────────────
+🎵 More relaxing music on our channels:
+  🎷 Night Jazz BGM → Red Wolf's Lounge
+  🌊 Chill & Study  → Chill Relax BGM
+  🌙 Sleep Music    → Drift Into Sleep Music
+─────────────────────────────
 """
 
     tags = [
