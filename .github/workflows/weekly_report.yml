@@ -1,0 +1,49 @@
+name: Weekly Report
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # 毎週月曜 09:00 JST
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate report
+        id: report
+        env:
+          CHILL_CLIENT_SECRET_JSON: ${{ secrets.CHILL_CLIENT_SECRET_JSON }}
+          CHILL_REFRESH_TOKEN: ${{ secrets.CHILL_REFRESH_TOKEN }}
+          JAZZ_CLIENT_SECRET_JSON: ${{ secrets.JAZZ_CLIENT_SECRET_JSON }}
+          JAZZ_REFRESH_TOKEN: ${{ secrets.JAZZ_REFRESH_TOKEN }}
+          CAFE_CLIENT_SECRET_JSON: ${{ secrets.CAFE_CLIENT_SECRET_JSON }}
+          CAFE_REFRESH_TOKEN: ${{ secrets.CAFE_REFRESH_TOKEN }}
+          SLEEP_CLIENT_SECRET_JSON: ${{ secrets.SLEEP_CLIENT_SECRET_JSON }}
+          SLEEP_REFRESH_TOKEN: ${{ secrets.SLEEP_REFRESH_TOKEN }}
+        run: python -c "from agents.weekly_report_agent import run; run()"
+
+      - name: Send email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.REPORT_GMAIL_ADDRESS }}
+          password: ${{ secrets.REPORT_GMAIL_APP_PASSWORD }}
+          to: ${{ secrets.REPORT_TO_EMAIL }}
+          from: BGM YouTube Auto <${{ secrets.REPORT_GMAIL_ADDRESS }}>
+          subject: ${{ steps.report.outputs.subject }}
+          body: ${{ steps.report.outputs.body }}
