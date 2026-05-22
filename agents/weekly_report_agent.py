@@ -49,7 +49,7 @@ def get_credentials(client_secret_json, refresh_token):
         token_uri="https://oauth2.googleapis.com/token",
         client_id=client_info["installed"]["client_id"],
         client_secret=client_info["installed"]["client_secret"],
-        scopes=["https://www.googleapis.com/auth/youtube.readonly"],
+        scopes=["https://www.googleapis.com/auth/youtube"],
     )
     creds.refresh(Request())
     return creds
