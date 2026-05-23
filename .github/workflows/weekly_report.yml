@@ -46,4 +46,4 @@ jobs:
           to: ${{ secrets.REPORT_TO_EMAIL }}
           from: BGM YouTube Auto <${{ secrets.REPORT_GMAIL_ADDRESS }}>
           subject: ${{ steps.report.outputs.subject }}
-          body: ${{ steps.report.outputs.body }}
+          html_body: ${{ steps.report.outputs.html_body }}

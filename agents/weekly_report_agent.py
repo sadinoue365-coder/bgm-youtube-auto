@@ -1,10 +1,7 @@
 """
-週次パフォーマンスレポート — 全4チャンネル
+週次パフォーマンスレポート — 全4チャンネル (HTML メール版)
 
-毎週月曜日に直近7日間の各チャンネル成績をまとめ、メール本文を生成する。
-GitHub Actionsの dawidd6/action-send-mail でメール送信。
-
-出力: 標準出力にメール本文 + 環境変数 GITHUB_OUTPUT にも書き出し
+毎週月曜日に直近7日間の各チャンネル成績をまとめ、HTMLメールを生成する。
 """
 
 import json
@@ -21,22 +18,26 @@ CHANNEL_CONFIGS = {
     "Chill": {
         "client_secret_env": "CHILL_CLIENT_SECRET_JSON",
         "refresh_token_env": "CHILL_REFRESH_TOKEN",
-        "emoji": "🎵",
+        "emoji": "🌊",
+        "color": "#4A90D9",
     },
     "Jazz": {
         "client_secret_env": "JAZZ_CLIENT_SECRET_JSON",
         "refresh_token_env": "JAZZ_REFRESH_TOKEN",
         "emoji": "🎷",
+        "color": "#C0392B",
     },
     "Cafe": {
         "client_secret_env": "CAFE_CLIENT_SECRET_JSON",
         "refresh_token_env": "CAFE_REFRESH_TOKEN",
         "emoji": "☕",
+        "color": "#8B6914",
     },
     "Sleep": {
         "client_secret_env": "SLEEP_CLIENT_SECRET_JSON",
         "refresh_token_env": "SLEEP_REFRESH_TOKEN",
         "emoji": "🌙",
+        "color": "#2C3E50",
     },
 }
 
@@ -56,7 +57,6 @@ def get_credentials(client_secret_json, refresh_token):
 
 
 def get_channel_stats(youtube, days=14):
-    """直近14日の動画を取得し、今週・先週の視聴数を返す"""
     ch = youtube.channels().list(part="contentDetails,snippet,statistics", mine=True).execute()
     ch_item = ch["items"][0]
     playlist_id = ch_item["contentDetails"]["relatedPlaylists"]["uploads"]
@@ -83,72 +83,106 @@ def get_channel_stats(youtube, days=14):
     if not videos:
         return ch_name, total_subs, [], []
 
-    # 統計取得
     ids = ",".join(v["id"] for v in videos)
     stats_resp = youtube.videos().list(part="statistics", id=ids).execute()
     stats_map = {s["id"]: s["statistics"] for s in stats_resp.get("items", [])}
 
-    this_week = []
-    last_week = []
+    now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
+    this_week, last_week = [], []
 
     for v in videos:
         s = stats_map.get(v["id"], {})
         views = int(s.get("viewCount", 0))
-        age_days = (now - v["published_at"]).days
         entry = {
             "title": v["title"],
             "views": views,
-            "age_days": age_days,
+            "age_days": (now - v["published_at"]).days,
             "published_at": v["published_at"],
         }
-        if v["published_at"] >= week_ago:
-            this_week.append(entry)
-        else:
-            last_week.append(entry)
+        (this_week if v["published_at"] >= week_ago else last_week).append(entry)
 
     return ch_name, total_subs, this_week, last_week
 
 
-def format_channel_section(name, emoji, ch_name, total_subs, this_week, last_week):
-    lines = []
-    lines.append(f"{emoji} {name} ({ch_name})")
-    lines.append(f"   登録者数: {total_subs:,}")
+def trend_badge(ratio):
+    if ratio >= 120:
+        return '<span style="color:#27AE60;font-weight:bold">▲ {:.0f}%</span>'.format(ratio)
+    elif ratio >= 100:
+        return '<span style="color:#27AE60">▲ {:.0f}%</span>'.format(ratio)
+    elif ratio >= 80:
+        return '<span style="color:#E67E22">▼ {:.0f}%</span>'.format(ratio)
+    else:
+        return '<span style="color:#E74C3C;font-weight:bold">▼ {:.0f}%</span>'.format(ratio)
 
-    # 今週
+
+def build_channel_card(name, cfg, ch_name, subs, this_week, last_week):
+    color = cfg["color"]
+    emoji = cfg["emoji"]
     this_views = sum(v["views"] for v in this_week)
-    lines.append(f"   今週の投稿: {len(this_week)}本 / 合計 {this_views:,} views")
+    last_views = sum(v["views"] for v in last_week)
+
+    ratio_html = ""
+    if last_views > 0:
+        ratio = this_views / last_views * 100
+        ratio_html = f"&nbsp;{trend_badge(ratio)}&nbsp;<small style='color:#888'>先週 {last_views:,}</small>"
+
+    top_html = ""
     if this_week:
         top = sorted(this_week, key=lambda x: x["views"], reverse=True)[0]
-        lines.append(f"   今週トップ: {top['title'][:50]} ({top['views']:,} views)")
+        top_html = f"""
+        <tr>
+          <td style="padding:4px 8px;color:#888;font-size:13px;">トップ動画</td>
+          <td style="padding:4px 8px;font-size:13px;">{top['title'][:45]}… <span style="color:#888">({top['views']:,} views)</span></td>
+        </tr>"""
 
-    # 先週比
-    last_views = sum(v["views"] for v in last_week)
-    if last_week and last_views > 0:
-        ratio = this_views / last_views * 100
-        arrow = "↑" if ratio >= 100 else "↓"
-        lines.append(f"   先週比: {arrow} {ratio:.0f}% (先週 {last_views:,} views)")
-
-    # 低パフォーマンス警告
+    warn_html = ""
     all_views = [v["views"] for v in this_week + last_week]
     if len(all_views) >= 3:
         median = statistics.median(all_views)
         low = [v for v in this_week if v["views"] < median * 0.5 and v["age_days"] >= 7]
         if low:
-            lines.append(f"   ⚠️  低パフォーマンス動画: {len(low)}本 (中央値{median:.0f}の50%未満)")
+            warn_html = f"""
+        <tr>
+          <td colspan="2" style="padding:6px 8px;">
+            <span style="background:#FFF3CD;color:#856404;padding:2px 8px;border-radius:4px;font-size:12px;">
+              ⚠️ 低パフォーマンス {len(low)}本 — optimize_agent が自動改善予定
+            </span>
+          </td>
+        </tr>"""
 
-    return "\n".join(lines)
+    return f"""
+    <div style="margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid #E0E0E0;">
+      <div style="background:{color};padding:10px 16px;">
+        <span style="color:white;font-size:16px;font-weight:bold;">{emoji} {name}</span>
+        <span style="color:rgba(255,255,255,0.8);font-size:13px;margin-left:8px;">{ch_name}</span>
+      </div>
+      <table style="width:100%;background:white;border-collapse:collapse;">
+        <tr>
+          <td style="padding:8px 8px 4px;color:#888;font-size:13px;width:35%;">今週の視聴数</td>
+          <td style="padding:8px 8px 4px;font-size:15px;font-weight:bold;">{this_views:,} views {ratio_html}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px;color:#888;font-size:13px;">投稿本数</td>
+          <td style="padding:4px 8px;font-size:13px;">{len(this_week)}本</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px;color:#888;font-size:13px;">登録者数</td>
+          <td style="padding:4px 8px;font-size:13px;">{subs:,}</td>
+        </tr>
+        {top_html}
+        {warn_html}
+      </table>
+    </div>"""
 
 
 def run():
     now = datetime.now(timezone.utc)
-    week_str = now.strftime("%Y/%m/%d")
     start_str = (now - timedelta(days=7)).strftime("%m/%d")
     end_str = now.strftime("%m/%d")
-
     subject = f"【週次レポート】BGM YouTube 4チャンネル ({start_str}〜{end_str})"
 
-    sections = []
+    channel_cards = []
     total_this_views = 0
     total_last_views = 0
     total_subs_all = 0
@@ -157,7 +191,7 @@ def run():
         client_secret = os.environ.get(cfg["client_secret_env"])
         refresh_token = os.environ.get(cfg["refresh_token_env"])
         if not client_secret or not refresh_token:
-            sections.append(f"{cfg['emoji']} {name}: 認証情報なし")
+            channel_cards.append(f'<p style="color:#888">{cfg["emoji"]} {name}: 認証情報なし</p>')
             continue
         try:
             creds = get_credentials(client_secret, refresh_token)
@@ -166,49 +200,67 @@ def run():
             total_this_views += sum(v["views"] for v in this_week)
             total_last_views += sum(v["views"] for v in last_week)
             total_subs_all += subs
-            sections.append(format_channel_section(name, cfg["emoji"], ch_name, subs, this_week, last_week))
+            channel_cards.append(build_channel_card(name, cfg, ch_name, subs, this_week, last_week))
         except Exception as e:
-            sections.append(f"{cfg['emoji']} {name}: エラー — {e}")
+            channel_cards.append(f'<p style="color:#E74C3C">{cfg["emoji"]} {name}: エラー — {e}</p>')
 
-    ratio_text = ""
+    overall_ratio_html = ""
     if total_last_views > 0:
         ratio = total_this_views / total_last_views * 100
-        arrow = "↑" if ratio >= 100 else "↓"
-        ratio_text = f" ({arrow} 先週比 {ratio:.0f}%)"
+        overall_ratio_html = f"&nbsp;{trend_badge(ratio)}"
 
-    body = f"""BGM YouTube 週次レポート
-集計期間: {start_str} 〜 {end_str}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    html_body = f"""<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#F5F5F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:24px auto;">
 
-【全チャンネル合計】
-今週の視聴数: {total_this_views:,} views{ratio_text}
-総登録者数:   {total_subs_all:,}
+    <!-- ヘッダー -->
+    <div style="background:#1A1A2E;border-radius:8px 8px 0 0;padding:20px 24px;">
+      <div style="color:white;font-size:20px;font-weight:bold;">📊 BGM YouTube 週次レポート</div>
+      <div style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:4px;">集計期間: {start_str} 〜 {end_str}</div>
+    </div>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【チャンネル別内訳】
+    <!-- 全体サマリー -->
+    <div style="background:white;padding:20px 24px;border-left:1px solid #E0E0E0;border-right:1px solid #E0E0E0;">
+      <div style="font-size:13px;color:#888;margin-bottom:4px;">全チャンネル合計</div>
+      <div style="font-size:28px;font-weight:bold;color:#1A1A2E;">
+        {total_this_views:,} <span style="font-size:16px;font-weight:normal;color:#888;">views</span>
+        {overall_ratio_html}
+      </div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">総登録者数: {total_subs_all:,}</div>
+    </div>
 
-{chr(10).join(sections)}
+    <!-- 区切り -->
+    <div style="background:#F0F0F0;padding:8px 24px;">
+      <span style="font-size:12px;color:#888;font-weight:bold;letter-spacing:1px;">チャンネル別内訳</span>
+    </div>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-※ 低パフォーマンス動画はoptimize_agentが自動で
-  タグ・タイトル・説明文を改善します（投稿7日後）
+    <!-- チャンネルカード -->
+    <div style="background:#F5F5F5;padding:12px 16px;">
+      {"".join(channel_cards)}
+    </div>
 
-Generated by BGM YouTube Auto System
-"""
+    <!-- フッター -->
+    <div style="background:#1A1A2E;border-radius:0 0 8px 8px;padding:14px 24px;">
+      <div style="color:rgba(255,255,255,0.5);font-size:11px;">
+        Generated by BGM YouTube Auto System &nbsp;|&nbsp; 毎週月曜 9:00 JST 自動送信
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>"""
 
     print(f"SUBJECT: {subject}")
-    print("=" * 60)
-    print(body)
+    print(html_body[:500])
 
-    # GitHub Actions output
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
         with open(github_output, "a") as f:
             f.write(f"subject={subject}\n")
-            # body はマルチライン対応
-            f.write(f"body<<EOF\n{body}\nEOF\n")
+            f.write(f"html_body<<EOF\n{html_body}\nEOF\n")
 
-    return subject, body
+    return subject, html_body
 
 
 if __name__ == "__main__":
