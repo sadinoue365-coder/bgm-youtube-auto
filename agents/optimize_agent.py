@@ -121,9 +121,9 @@ def get_target_videos(all_videos):
     return targets
 
 
-# ─── 動画の詳細（統計+snippet）取得 ─────────────────────────────
+# ─── 動画の詳細（統計+snippet+status）取得 ──────────────────────
 def get_video_detail(youtube, video_id):
-    resp = youtube.videos().list(part="statistics,snippet", id=video_id).execute()
+    resp = youtube.videos().list(part="statistics,snippet,status", id=video_id).execute()
     items = resp.get("items", [])
     return items[0] if items else None
 
@@ -199,6 +199,10 @@ def optimize_channel(channel_key, cfg):
         for v in videos:
             detail = get_video_detail(youtube, v["id"])
             if detail:
+                privacy = detail.get("status", {}).get("privacyStatus", "public")
+                if privacy != "public":
+                    print(f"  スキップ ({privacy}): {v['title'][:50]}")
+                    continue
                 views = int(detail["statistics"].get("viewCount", 0))
                 age_days = (datetime.now(timezone.utc) - v["published_at"]).days
                 all_data.append({
