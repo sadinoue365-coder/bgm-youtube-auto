@@ -1,9 +1,8 @@
 name: Weekly BGM Upload
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # 毎日 09:00 JST (= 00:00 UTC)
-  workflow_dispatch:      # GitHubから手動実行も可能
+  # 停止中 (Club BGM チャンネル廃止のため)
+  workflow_dispatch:
 
 jobs:
   upload:

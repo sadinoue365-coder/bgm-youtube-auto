@@ -307,16 +307,14 @@ def run():
       <div style="font-size:13px;color:#888;margin-top:4px;">総登録者数: {total_subs_all:,}</div>
     </div>
 
-    <!-- 区切り -->
-    <div style="background:#F0F0F0;padding:8px 24px;">
-      <span style="font-size:12px;color:#888;font-weight:bold;letter-spacing:1px;">チャンネル別内訳</span>
-    </div>
-
     {lift_block}
 
     {insight_block}
 
-    <!-- チャンネルカード -->
+    <!-- チャンネル別内訳 -->
+    <div style="background:#F0F0F0;padding:8px 24px;">
+      <span style="font-size:12px;color:#888;font-weight:bold;letter-spacing:1px;">チャンネル別内訳</span>
+    </div>
     <div style="background:#F5F5F5;padding:12px 16px;">
       {"".join(channel_cards)}
     </div>

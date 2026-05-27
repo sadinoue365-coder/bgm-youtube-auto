@@ -64,7 +64,7 @@ def record_optimization(video_id, channel, views_before, actions, ctr_before=Non
     print(f"  [log] Recorded optimization: {video_id} ({channel}, {views_before}v)")
 
 
-def update_post_metrics(youtube, video_ids_on_channel=None):
+def update_post_metrics(youtube):
     """
     記録から7〜21日経過した動画の事後視聴数を取得して更新する。
     optimize_agent の実行時に呼び出す。
@@ -138,9 +138,17 @@ def get_lift_stats(min_samples=5):
     if not lifts:
         return {"n_measured": 0, "avg_lift": None}
 
-    # Mann-Whitney U: 最適化後 vs 最適化前（1.0との比較）
+    # Wilcoxon符号付き順位検定: リフト > 1.0 を検定
     from scipy import stats as scipy_stats
-    stat, p = scipy_stats.wilcoxon([l - 1.0 for l in lifts], alternative="greater")
+    try:
+        diffs = [l - 1.0 for l in lifts]
+        # 全サンプル同値の場合はwilcoxonが例外 → フォールバック
+        if len(set(diffs)) <= 1:
+            p = 1.0
+        else:
+            _, p = scipy_stats.wilcoxon(diffs, alternative="greater")
+    except Exception:
+        p = 1.0
 
     # アクション別効果
     action_lifts = {}

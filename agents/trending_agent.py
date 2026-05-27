@@ -8,6 +8,7 @@ APIコスト: search.list = 100 units / 呼び出し
 """
 
 import re
+from datetime import datetime, timedelta, timezone
 from googleapiclient.discovery import build
 
 
@@ -74,8 +75,6 @@ def get_top_performing_styles(youtube, style_list, days=30):
     Returns:
         dict: {style: weight} — 視聴数が多いスタイルほど高い重み
     """
-    from datetime import datetime, timedelta, timezone
-
     try:
         ch = youtube.channels().list(part="contentDetails", mine=True).execute()
         playlist_id = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
@@ -89,7 +88,6 @@ def get_top_performing_styles(youtube, style_list, days=30):
         titles = []
         for item in resp.get("items", []):
             pub_str = item["snippet"]["publishedAt"]
-            from datetime import datetime, timezone
             pub_dt = datetime.strptime(pub_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
             if pub_dt >= since:
                 video_ids.append(item["snippet"]["resourceId"]["videoId"])

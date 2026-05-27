@@ -1,8 +1,7 @@
 name: Monthly Report
 
 on:
-  schedule:
-    - cron: '0 1 1 * *'  # 毎月1日 10:00 JST
+  # 停止中 (旧Club BGM用レポート。weekly_report.ymlに統合済み)
   workflow_dispatch:
 
 jobs:
