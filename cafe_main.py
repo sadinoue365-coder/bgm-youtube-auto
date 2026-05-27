@@ -220,4 +220,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        cleanup(config.WORK_DIR)
+        print(f"\n❌ Fatal error: {e}")
+        raise

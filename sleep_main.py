@@ -105,7 +105,7 @@ def create_black_video(audio_path, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     subprocess.run([
         "ffmpeg", "-y",
-        "-f", "lavfi", "-i", "color=c=black:s=1920x1080:r=1",  # 1fpsで軽量化
+        "-f", "lavfi", "-i", "color=c=black:s=1920x1080:r=24",  # 24fps (YouTube推奨最低値)
         "-i", audio_path,
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "35",
         "-tune", "stillimage",
@@ -277,4 +277,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        cleanup(config.WORK_DIR)
+        print(f"\n❌ Fatal error: {e}")
+        raise

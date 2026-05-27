@@ -1,8 +1,6 @@
 import os
 import subprocess
 
-import config
-
 
 def loop_audio(mp3_paths, target_hours=3, output_path="work/looped.mp3"):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

@@ -63,22 +63,30 @@ def get_channel_stats(youtube, days=14):
     ch_name = ch_item["snippet"]["title"]
     total_subs = int(ch_item["statistics"].get("subscriberCount", 0))
 
-    resp = youtube.playlistItems().list(
-        part="snippet", playlistId=playlist_id, maxResults=50
-    ).execute()
-
     now = datetime.now(timezone.utc)
     since = now - timedelta(days=days)
     videos = []
-    for item in resp.get("items", []):
-        pub_str = item["snippet"]["publishedAt"]
-        pub_dt = datetime.strptime(pub_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-        if pub_dt >= since:
-            videos.append({
-                "id": item["snippet"]["resourceId"]["videoId"],
-                "title": item["snippet"]["title"],
-                "published_at": pub_dt,
-            })
+    page_token = None
+    while True:
+        kwargs = dict(part="snippet", playlistId=playlist_id, maxResults=50)
+        if page_token:
+            kwargs["pageToken"] = page_token
+        resp = youtube.playlistItems().list(**kwargs).execute()
+        for item in resp.get("items", []):
+            pub_str = item["snippet"]["publishedAt"]
+            pub_dt = datetime.strptime(pub_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            if pub_dt >= since:
+                videos.append({
+                    "id": item["snippet"]["resourceId"]["videoId"],
+                    "title": item["snippet"]["title"],
+                    "published_at": pub_dt,
+                })
+            else:
+                page_token = None
+                break
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
 
     if not videos:
         return ch_name, total_subs, [], []
