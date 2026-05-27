@@ -11,6 +11,7 @@ from agents.loop_agent import loop_audio
 from agents.thumbnail_agent import create_thumbnail
 from agents.cleanup_agent import cleanup
 from agents.playlist_agent import add_to_playlist
+from agents.trending_agent import get_trending_tags, get_top_performing_styles
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -172,6 +173,13 @@ def main():
 
     print("[1/6] Authenticating...")
     creds = get_credentials()
+    youtube = build("youtube", "v3", credentials=creds)
+
+    print("\n[Trend] Analyzing trending keywords & top styles...")
+    trending_tags = get_trending_tags(youtube, "jazz bgm late night")
+    style_weights = get_top_performing_styles(youtube, STYLES)
+    weighted_styles = [s for s in STYLES for _ in range(style_weights.get(s, 1))]
+    scene = random.choice(weighted_styles)
 
     print("\n[2/6] Downloading MP3s from Google Drive...")
     mp3_paths = download_random_mp3s(creds, num=config.NUM_SONGS, dest_dir=config.WORK_DIR)
@@ -184,7 +192,7 @@ def main():
                             output_path=f"{config.WORK_DIR}/looped.mp3")
 
     print("\n[4/6] Fetching wolf image from Google Drive...")
-    image_path, scene = generate_wolf_image(
+    image_path, _ = generate_wolf_image(
         creds,
         config.IMAGE_FOLDER_ID,
         output_path=f"{config.WORK_DIR}/wolf_bg.jpg",
@@ -195,6 +203,7 @@ def main():
                                    output_path=f"{config.WORK_DIR}/output.mp4")
 
     title, description, tags = generate_metadata(scene, target_hours)
+    tags = list(dict.fromkeys(tags + trending_tags))[:30]  # トレンドタグを追加（最大30）
 
     print("\n[6/6] Creating thumbnail & uploading...")
     thumbnail_path = create_thumbnail(
@@ -209,7 +218,6 @@ def main():
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
 
     print("\nAdding to playlist...")
-    youtube = build("youtube", "v3", credentials=creds)
     add_to_playlist(youtube, video_id, config.PLAYLIST_ID)
 
     print("\nCleaning up...")

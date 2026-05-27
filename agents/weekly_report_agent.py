@@ -211,6 +211,42 @@ def run():
         ratio = total_this_views / total_last_views * 100
         overall_ratio_html = f"&nbsp;{trend_badge(ratio)}"
 
+    # インサイト生成
+    insights = []
+    all_this_week = []
+    for name, cfg in CHANNEL_CONFIGS.items():
+        client_secret = os.environ.get(cfg["client_secret_env"])
+        refresh_token = os.environ.get(cfg["refresh_token_env"])
+        if not client_secret or not refresh_token:
+            continue
+        try:
+            creds = get_credentials(client_secret, refresh_token)
+            youtube = build("youtube", "v3", credentials=creds)
+            _, _, this_week, _ = get_channel_stats(youtube, days=14)
+            for v in this_week:
+                v["channel"] = name
+                all_this_week.append(v)
+        except Exception:
+            pass
+
+    if all_this_week:
+        top3 = sorted(all_this_week, key=lambda x: x["views"], reverse=True)[:3]
+        insights_html = "".join([
+            f'<li style="margin:4px 0;font-size:13px;">'
+            f'<b>{v["channel"]}</b>: {v["title"][:40]}… '
+            f'<span style="color:#27AE60">{v["views"]:,} views</span></li>'
+            for v in top3
+        ])
+        insight_block = f"""
+    <div style="background:#F0F0F0;padding:8px 24px;">
+      <span style="font-size:12px;color:#888;font-weight:bold;letter-spacing:1px;">今週のトップ動画</span>
+    </div>
+    <div style="background:white;padding:12px 24px;border-left:1px solid #E0E0E0;border-right:1px solid #E0E0E0;">
+      <ul style="margin:0;padding-left:16px;">{insights_html}</ul>
+    </div>"""
+    else:
+        insight_block = ""
+
     html_body = f"""<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#F5F5F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -236,6 +272,8 @@ def run():
     <div style="background:#F0F0F0;padding:8px 24px;">
       <span style="font-size:12px;color:#888;font-weight:bold;letter-spacing:1px;">チャンネル別内訳</span>
     </div>
+
+    {insight_block}
 
     <!-- チャンネルカード -->
     <div style="background:#F5F5F5;padding:12px 16px;">
