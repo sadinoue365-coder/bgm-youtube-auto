@@ -1,25 +1,29 @@
 """
-全チャンネル最適化エージェント
+全チャンネル最適化エージェント（統計ベース）
 
-直近2週間の動画を分析し、低パフォーマンス動画を自動改善する。
+【閾値】任意の固定値ではなく第25パーセンタイルを使用
+  サンプル < 5 本の場合: 中央値50%にフォールバック
 
-【閾値】動画年齢で補正した自チャンネル中央値ベース
-  - 0〜7日:  中央値の30%以下 → 深刻
-  - 8〜14日: 中央値の50%以下 → 深刻 / 50〜70%以下 → 軽微
+【判定】
+  - views < P25 → 深刻: タグ + 説明文 + タイトル更新
+  - P25 <= views < P40 → 軽微: タグ + 説明文更新
 
-【アクション】
-  - 軽微: タグ追加 + 説明文にキーワード追加
-  - 深刻: 上記 + タイトル末尾にキーワード追加
+【効果測定】
+  - 最適化実施をoptimization_logに記録
+  - 7日後の事後視聴数を自動取得してリフト率を算出
+  - weekly_reportで統計的有意差を表示
 """
 
 import json
 import os
-import statistics
 from datetime import datetime, timedelta, timezone
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+
+from agents.stats_agent import low_performer_threshold, describe, format_stats
+from agents.optimization_log import record_optimization, update_post_metrics
 
 
 # ─── チャンネル別設定 ─────────────────────────────────────────────
@@ -212,40 +216,54 @@ def optimize_channel(channel_key, cfg):
         if not all_data:
             return
 
-        median_views = statistics.median([v["views"] for v in all_data])
-        print(f"\n  中央値 (直近30日): {median_views:.0f} views")
+        # ── 統計的閾値の算出 ──────────────────────────────────────
+        all_views = [v["views"] for v in all_data]
+        stats = describe(all_views)
+        print(f"\n  分布統計: {format_stats(stats)}")
 
-        # 最適化対象：6〜8日前の動画のみ
+        threshold_severe, method_s = low_performer_threshold(all_views, percentile=25)
+        threshold_mild, method_m   = low_performer_threshold(all_views, percentile=40)
+        print(f"  閾値: 深刻 < {threshold_severe:.0f} views ({method_s}) / 軽微 < {threshold_mild:.0f} views ({method_m})")
+
+        # ── 事後計測（7日以上前に最適化した動画の視聴数を更新） ─
+        updated = update_post_metrics(youtube)
+        if updated:
+            print(f"  事後計測: {updated}件更新")
+
+        # ── 最適化対象: 投稿7〜8日前の公開動画 ──────────────────
         targets = [v for v in all_data if 7 <= v["age_days"] <= 8]
-        print(f"  最適化対象 (6〜8日前): {len(targets)}本")
+        print(f"  最適化対象 (7〜8日前): {len(targets)}本")
 
         if not targets:
             print("  対象動画なし → スキップ")
             return
 
-        # 評価・最適化（年齢補正不要 = 全部7日前後で同条件）
         optimized = 0
         for v in targets:
-            ratio = v["views"] / median_views if median_views > 0 else 1.0
+            views = v["views"]
             snippet = v["snippet"]
 
-            if ratio <= 0.50:
-                print(f"\n  ⚠️  深刻 ({v['views']}views / 中央値比{ratio:.0%})")
+            if views < threshold_severe:
+                actions = ["tags", "description", "title"]
+                print(f"\n  ⚠️  深刻 ({views}views < P25:{threshold_severe:.0f})")
                 print(f"     → {snippet['title'][:60]}")
                 update_tags(youtube, v["id"], snippet, cfg["extra_tags"])
                 update_description(youtube, v["id"], snippet, cfg["desc_footer"])
                 update_title(youtube, v["id"], snippet, cfg["title_suffix"])
+                record_optimization(v["id"], channel_key, views, actions)
                 optimized += 1
 
-            elif ratio <= 0.70:
-                print(f"\n  📉 軽微 ({v['views']}views / 中央値比{ratio:.0%})")
+            elif views < threshold_mild:
+                actions = ["tags", "description"]
+                print(f"\n  📉 軽微 ({views}views < P40:{threshold_mild:.0f})")
                 print(f"     → {snippet['title'][:60]}")
                 update_tags(youtube, v["id"], snippet, cfg["extra_tags"])
                 update_description(youtube, v["id"], snippet, cfg["desc_footer"])
+                record_optimization(v["id"], channel_key, views, actions)
                 optimized += 1
 
             else:
-                print(f"  ✓ 問題なし ({v['views']}views / 中央値比{ratio:.0%})")
+                print(f"  ✓ 正常 ({views}views ≥ P40:{threshold_mild:.0f})")
 
         print(f"\n  ✅ {optimized}/{len(targets)} 本を最適化")
 

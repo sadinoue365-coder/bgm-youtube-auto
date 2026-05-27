@@ -13,6 +13,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
+from agents.optimization_log import get_lift_stats
+
 
 CHANNEL_CONFIGS = {
     "Jazz": {
@@ -211,6 +213,43 @@ def run():
         ratio = total_this_views / total_last_views * 100
         overall_ratio_html = f"&nbsp;{trend_badge(ratio)}"
 
+    # optimize_agent 効果測定サマリー
+    lift_stats = get_lift_stats()
+    if lift_stats.get("avg_lift"):
+        avg_lift_pct = (lift_stats["avg_lift"] - 1) * 100
+        sig_label = "✅ 統計的有意 (p<0.05)" if lift_stats.get("significant") else f"⚠️ 有意差なし (p={lift_stats.get('p_value', 1):.2f})"
+        lift_block = f"""
+    <div style="background:#F0F0F0;padding:8px 24px;">
+      <span style="font-size:12px;color:#888;font-weight:bold;letter-spacing:1px;">optimize_agent 効果測定</span>
+    </div>
+    <div style="background:white;padding:12px 24px;border-left:1px solid #E0E0E0;border-right:1px solid #E0E0E0;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="font-size:13px;color:#888;padding:3px 8px;">計測済み施策数</td>
+          <td style="font-size:13px;padding:3px 8px;">{lift_stats['n_measured']}件</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:#888;padding:3px 8px;">平均リフト率</td>
+          <td style="font-size:13px;padding:3px 8px;font-weight:bold;color:{'#27AE60' if avg_lift_pct >= 0 else '#E74C3C'};">
+            {'▲' if avg_lift_pct >= 0 else '▼'} {abs(avg_lift_pct):.1f}%
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:#888;padding:3px 8px;">統計的信頼性</td>
+          <td style="font-size:13px;padding:3px 8px;">{sig_label}</td>
+        </tr>
+      </table>
+    </div>"""
+    else:
+        note = lift_stats.get("note", "計測データ蓄積中")
+        lift_block = f"""
+    <div style="background:#F0F0F0;padding:8px 24px;">
+      <span style="font-size:12px;color:#888;font-weight:bold;letter-spacing:1px;">optimize_agent 効果測定</span>
+    </div>
+    <div style="background:white;padding:12px 24px;border-left:1px solid #E0E0E0;border-right:1px solid #E0E0E0;">
+      <p style="margin:0;font-size:13px;color:#888;">📊 {note}</p>
+    </div>"""
+
     # インサイト生成
     insights = []
     all_this_week = []
@@ -272,6 +311,8 @@ def run():
     <div style="background:#F0F0F0;padding:8px 24px;">
       <span style="font-size:12px;color:#888;font-weight:bold;letter-spacing:1px;">チャンネル別内訳</span>
     </div>
+
+    {lift_block}
 
     {insight_block}
 
