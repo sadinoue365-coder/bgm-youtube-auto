@@ -1,8 +1,7 @@
 name: Chill Channel Upload
 
 on:
-  schedule:
-    - cron: '0 2 * * *'  # 毎日 11:00 JST (= 02:00 UTC)
+  # 停止中 (2025-05-21 パフォーマンス不振のため)
   workflow_dispatch:
 
 jobs:

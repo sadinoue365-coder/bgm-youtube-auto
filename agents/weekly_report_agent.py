@@ -15,29 +15,23 @@ from googleapiclient.discovery import build
 
 
 CHANNEL_CONFIGS = {
-    "Chill": {
-        "client_secret_env": "CHILL_CLIENT_SECRET_JSON",
-        "refresh_token_env": "CHILL_REFRESH_TOKEN",
-        "emoji": "🌊",
-        "color": "#4A90D9",
-    },
     "Jazz": {
         "client_secret_env": "JAZZ_CLIENT_SECRET_JSON",
         "refresh_token_env": "JAZZ_REFRESH_TOKEN",
         "emoji": "🎷",
         "color": "#C0392B",
     },
-    "Cafe": {
-        "client_secret_env": "CAFE_CLIENT_SECRET_JSON",
-        "refresh_token_env": "CAFE_REFRESH_TOKEN",
-        "emoji": "☕",
-        "color": "#8B6914",
-    },
     "Sleep": {
         "client_secret_env": "SLEEP_CLIENT_SECRET_JSON",
         "refresh_token_env": "SLEEP_REFRESH_TOKEN",
         "emoji": "🌙",
         "color": "#2C3E50",
+    },
+    "Cafe": {
+        "client_secret_env": "CAFE_CLIENT_SECRET_JSON",
+        "refresh_token_env": "CAFE_REFRESH_TOKEN",
+        "emoji": "☕",
+        "color": "#8B6914",
     },
 }
 

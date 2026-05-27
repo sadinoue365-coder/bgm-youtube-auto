@@ -24,17 +24,6 @@ from googleapiclient.discovery import build
 
 # ─── チャンネル別設定 ─────────────────────────────────────────────
 CHANNEL_CONFIGS = {
-    "chill": {
-        "client_secret_env": "CHILL_CLIENT_SECRET_JSON",
-        "refresh_token_env": "CHILL_REFRESH_TOKEN",
-        "extra_tags": [
-            "chill music", "lofi", "study music", "relaxing music",
-            "ambient music", "focus music", "work music", "background music",
-            "chill beats", "study beats", "concentration music",
-        ],
-        "title_suffix": "Relaxing BGM | Study Music",
-        "desc_footer": "\n\n🎵 #ChillMusic #LoFi #StudyMusic #RelaxingMusic #AmbientMusic #FocusMusic",
-    },
     "jazz": {
         "client_secret_env": "JAZZ_CLIENT_SECRET_JSON",
         "refresh_token_env": "JAZZ_REFRESH_TOKEN",
@@ -46,17 +35,6 @@ CHANNEL_CONFIGS = {
         "title_suffix": "Jazz BGM | Night Music",
         "desc_footer": "\n\n🎷 #JazzMusic #SmoothJazz #JazzBar #NightJazz #LoungeMusic #NightVibes",
     },
-    "cafe": {
-        "client_secret_env": "CAFE_CLIENT_SECRET_JSON",
-        "refresh_token_env": "CAFE_REFRESH_TOKEN",
-        "extra_tags": [
-            "cafe music", "coffee shop music", "bossa nova", "study cafe",
-            "work cafe", "cafe bgm", "coffee music", "acoustic background",
-            "relaxing cafe", "morning music",
-        ],
-        "title_suffix": "Cafe Music | Study BGM",
-        "desc_footer": "\n\n☕ #CafeMusic #CoffeeShop #BossaNova #StudyCafe #MorningMusic",
-    },
     "sleep": {
         "client_secret_env": "SLEEP_CLIENT_SECRET_JSON",
         "refresh_token_env": "SLEEP_REFRESH_TOKEN",
@@ -67,6 +45,17 @@ CHANNEL_CONFIGS = {
         ],
         "title_suffix": "Sleep Aid | Insomnia Relief",
         "desc_footer": "\n\n🌙 #SleepMusic #BlackScreen #DeepSleep #InsomniaRelief #SleepAid #DeltaWaves",
+    },
+    "cafe": {
+        "client_secret_env": "CAFE_CLIENT_SECRET_JSON",
+        "refresh_token_env": "CAFE_REFRESH_TOKEN",
+        "extra_tags": [
+            "cafe music", "coffee shop music", "bossa nova", "study cafe",
+            "work cafe", "cafe bgm", "coffee music", "acoustic background",
+            "relaxing cafe", "morning music",
+        ],
+        "title_suffix": "Cafe Music | Study BGM",
+        "desc_footer": "\n\n☕ #CafeMusic #CoffeeShop #BossaNova #StudyCafe #MorningMusic",
     },
 }
 
@@ -267,7 +256,7 @@ def optimize_channel(channel_key, cfg):
 # ─── メイン ──────────────────────────────────────────────────────
 def run():
     print("=== Weekly Optimize Agent ===\n")
-    print("対象: Chill / Jazz / Cafe / Sleep\n")
+    print("対象: Jazz / Cafe / Sleep\n")
 
     for key, cfg in CHANNEL_CONFIGS.items():
         optimize_channel(key, cfg)
