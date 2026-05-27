@@ -2,7 +2,7 @@ name: Sleep Channel Upload
 
 on:
   schedule:
-    - cron: '0 3 * * 6'  # 毎週土曜 12:00 JST (= 03:00 UTC)
+    - cron: '0 12 * * 5'  # 毎週金曜 21:00 JST (= 12:00 UTC)
   workflow_dispatch:
 
 jobs:
