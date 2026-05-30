@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bgm-youtube.jazz-live</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/venv/bin/python</string>
+    <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/live_main.py</string>
+    <string>jazz</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto</string>
+
+  <!-- クラッシュ・終了時に自動再起動 -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Mac起動時に自動開始 -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- ログ出力先 -->
+  <key>StandardOutPath</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/logs/launchd_jazz_live.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/logs/launchd_jazz_live_err.log</string>
+
+  <!-- 環境変数 (setup/.live.env からコピーして埋める) -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>JAZZ_LIVE_STREAM_KEY</key>
+    <string>PLACEHOLDER_REPLACE_ME</string>
+    <key>JAZZ_CLIENT_SECRET_JSON</key>
+    <string>PLACEHOLDER_REPLACE_ME</string>
+    <key>JAZZ_REFRESH_TOKEN</key>
+    <string>PLACEHOLDER_REPLACE_ME</string>
+    <key>JAZZ_GDRIVE_FOLDER_ID</key>
+    <string>PLACEHOLDER_REPLACE_ME</string>
+  </dict>
+</dict>
+</plist>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bgm-youtube.cafe-live</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/venv/bin/python</string>
+    <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/live_main.py</string>
+    <string>cafe</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto</string>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/logs/launchd_cafe_live.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/logs/launchd_cafe_live_err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>CAFE_LIVE_STREAM_KEY</key>
+    <string>PLACEHOLDER_REPLACE_ME</string>
+    <key>CAFE_CLIENT_SECRET_JSON</key>
+    <string>PLACEHOLDER_REPLACE_ME</string>
+    <key>CAFE_REFRESH_TOKEN</key>
+    <string>PLACEHOLDER_REPLACE_ME</string>
+    <key>CAFE_GDRIVE_FOLDER_ID</key>
+    <string>PLACEHOLDER_REPLACE_ME</string>
+  </dict>
+</dict>
+</plist>

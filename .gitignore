@@ -6,3 +6,6 @@ work/*.txt
 __pycache__/
 client_secret*.json
 .env
+setup/.live.env
+work/live_cache/
+logs/
