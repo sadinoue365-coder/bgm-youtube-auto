@@ -1,0 +1,49 @@
+name: Optimize Upload Schedule
+
+on:
+  schedule:
+    - cron: '0 1 * * 1'  # 毎週月曜 10:00 JST (= 01:00 UTC)
+  workflow_dispatch:
+
+# workflow YAML を書き換えて push するために write 権限が必要
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run schedule optimization
+        env:
+          JAZZ_CLIENT_SECRET_JSON: ${{ secrets.JAZZ_CLIENT_SECRET_JSON }}
+          JAZZ_REFRESH_TOKEN: ${{ secrets.JAZZ_REFRESH_TOKEN }}
+          CAFE_CLIENT_SECRET_JSON: ${{ secrets.CAFE_CLIENT_SECRET_JSON }}
+          CAFE_REFRESH_TOKEN: ${{ secrets.CAFE_REFRESH_TOKEN }}
+          SLEEP_CLIENT_SECRET_JSON: ${{ secrets.SLEEP_CLIENT_SECRET_JSON }}
+          SLEEP_REFRESH_TOKEN: ${{ secrets.SLEEP_REFRESH_TOKEN }}
+          CHILL_CLIENT_SECRET_JSON: ${{ secrets.CHILL_CLIENT_SECRET_JSON }}
+          CHILL_REFRESH_TOKEN: ${{ secrets.CHILL_REFRESH_TOKEN }}
+        run: python update_schedule.py --apply
+
+      - name: Commit changes
+        run: |
+          git config user.name "BGM Optimizer Bot"
+          git config user.email "optimizer@bgm-youtube-auto"
+          git add data/upload_timing.json .github/workflows/ || true
+          git diff --staged --quiet || git commit -m "chore: 投稿スケジュール自動最適化 [$(date +'%Y-%m-%d')]"
+          git push || echo "変更なし"

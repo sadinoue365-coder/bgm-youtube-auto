@@ -12,6 +12,7 @@ from agents.thumbnail_agent import create_thumbnail
 from agents.cleanup_agent import cleanup
 from agents.playlist_agent import add_to_playlist
 from agents.trending_agent import get_trending_tags, get_top_performing_styles
+from agents.timing_agent import record_upload, update_timing_metrics
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -176,6 +177,9 @@ def main():
     creds = get_credentials()
     youtube = build("youtube", "v3", credentials=creds)
 
+    print("\n[Timing] Measuring past upload performance...")
+    update_timing_metrics(youtube, "cafe")
+
     print("\n[Trend] Analyzing trending keywords & top styles...")
     trending_tags = get_trending_tags(youtube, "coffee shop music morning")
     style_weights = get_top_performing_styles(youtube, STYLES)
@@ -220,6 +224,8 @@ def main():
     if config.PLAYLIST_ID:
         print("\nAdding to playlist...")
         add_to_playlist(youtube, video_id, config.PLAYLIST_ID)
+
+    record_upload("cafe", video_id)
 
     print("\nCleaning up...")
     cleanup(config.WORK_DIR)

@@ -4,6 +4,7 @@ import random
 
 import chill_config as config
 from agents.duration_agent import get_random_duration, format_duration
+from agents.timing_agent import record_upload, update_timing_metrics
 from agents.image_agent import fetch_pexels_image
 from agents.static_video_agent import create_static_video
 from agents.loop_agent import loop_audio
@@ -140,6 +141,10 @@ def main():
 
     print("[1/5] Authenticating...")
     creds = get_credentials()
+    youtube = build("youtube", "v3", credentials=creds)
+
+    print("\n[Timing] Measuring past upload performance...")
+    update_timing_metrics(youtube, "chill")
 
     target_hours = get_random_duration()
     print(f"  Today's duration: {format_duration(target_hours)}")
@@ -176,8 +181,9 @@ def main():
     video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
 
     print("\nAdding to playlist...")
-    youtube = build("youtube", "v3", credentials=creds)
     add_to_playlist(youtube, video_id, config.PLAYLIST_ID)
+
+    record_upload("chill", video_id)
 
     print("\nCleaning up...")
     cleanup(config.WORK_DIR)

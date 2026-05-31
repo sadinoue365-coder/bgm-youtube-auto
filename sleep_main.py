@@ -13,6 +13,7 @@ import sys
 
 import sleep_config as config
 from agents.duration_agent import get_random_duration, format_duration
+from agents.timing_agent import record_upload, update_timing_metrics
 from agents.loop_agent import loop_audio
 from agents.thumbnail_agent import create_thumbnail
 from agents.cleanup_agent import cleanup
@@ -227,6 +228,10 @@ def main():
 
     print("[1/5] Authenticating...")
     creds = get_credentials()
+    youtube_client = build("youtube", "v3", credentials=creds)
+
+    print("\n[Timing] Measuring past upload performance...")
+    update_timing_metrics(youtube_client, "sleep")
 
     # 睡眠向け：長め時間を重み付きでランダム選択
     # 8〜12時間を30分刻みでランダム選択
@@ -269,6 +274,8 @@ def main():
 
     print("\nAdding to playlist...")
     add_to_playlist(creds, video_id, config.PLAYLIST_ID)
+
+    record_upload("sleep", video_id)
 
     print("\nCleaning up...")
     cleanup(config.WORK_DIR)
