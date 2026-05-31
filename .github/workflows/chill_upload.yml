@@ -1,7 +1,8 @@
 name: Chill Channel Upload
 
 on:
-  # 停止中 (2025-05-21 パフォーマンス不振のため)
+  schedule:
+    - cron: '0 9 * * 6'  # 毎週土曜 18:00 JST (= 09:00 UTC)
   workflow_dispatch:
 
 jobs:
@@ -19,7 +20,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install FFmpeg
-        run: sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
         run: pip install -r requirements.txt
