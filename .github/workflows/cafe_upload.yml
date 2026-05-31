@@ -2,7 +2,7 @@ name: Coffee Shop Upload
 
 on:
   schedule:
-    - cron: '0 21 * * *'  # 毎日 06:00 JST (= 21:00 UTC 前日)
+    - cron: '0 21 * * 1,3,5'  # 月水金 06:00 JST (= 21:00 UTC 前日)
   workflow_dispatch:
 
 jobs:
