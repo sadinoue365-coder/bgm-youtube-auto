@@ -1,6 +1,8 @@
 import datetime
 import json
 import random
+import ssl
+import time
 
 import chill_config as config
 from agents.duration_agent import get_random_duration, format_duration
@@ -15,6 +17,7 @@ from agents.playlist_agent import add_to_playlist
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 import io
 from googleapiclient.http import MediaIoBaseDownload
@@ -85,13 +88,35 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
             "madeForKids": False,
         },
     }
-    media = MediaFileUpload(video_path, mimetype="video/mp4", resumable=True, chunksize=50*1024*1024)
+    media = MediaFileUpload(video_path, mimetype="video/mp4", resumable=True, chunksize=50 * 1024 * 1024)
     request = service.videos().insert(part="snippet,status", body=body, media_body=media)
     response = None
+    retry = 0
+    max_retries = 5
     while response is None:
-        status, response = request.next_chunk()
-        if status:
-            print(f"  Uploading... {int(status.progress() * 100)}%")
+        try:
+            status, response = request.next_chunk()
+            if status:
+                print(f"  Uploading... {int(status.progress() * 100)}%")
+            retry = 0
+        except HttpError as e:
+            if e.resp.status in (500, 502, 503, 504):
+                retry += 1
+                if retry > max_retries:
+                    raise
+                wait = min(2 ** retry, 64)
+                print(f"  HTTP {e.resp.status} エラー、{wait}秒後にリトライ ({retry}/{max_retries})...")
+                time.sleep(wait)
+            else:
+                raise
+        except (ssl.SSLEOFError, ssl.SSLError, ConnectionResetError, BrokenPipeError, OSError) as e:
+            retry += 1
+            if retry > max_retries:
+                raise
+            wait = min(2 ** retry, 64)
+            print(f"  ネットワークエラー ({type(e).__name__})、{wait}秒後にリトライ ({retry}/{max_retries})...")
+            time.sleep(wait)
+
     video_id = response["id"]
     print(f"  Uploaded: https://www.youtube.com/watch?v={video_id}")
     service.thumbnails().set(
