@@ -224,28 +224,61 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
 
     video_id = response["id"]
     print(f"  Uploaded: https://www.youtube.com/watch?v={video_id}")
-    service.thumbnails().set(
-        videoId=video_id,
-        media_body=MediaFileUpload(thumbnail_path, mimetype="image/jpeg"),
-    ).execute()
+
+    retry = 0
+    while True:
+        try:
+            service.thumbnails().set(
+                videoId=video_id,
+                media_body=MediaFileUpload(thumbnail_path, mimetype="image/jpeg"),
+            ).execute()
+            break
+        except (ssl.SSLEOFError, ssl.SSLError, ConnectionResetError, BrokenPipeError, OSError) as e:
+            retry += 1
+            if retry > max_retries:
+                raise
+            wait = min(2 ** retry, 64)
+            print(f"  サムネイル設定エラー ({type(e).__name__})、{wait}秒後にリトライ ({retry}/{max_retries})...")
+            time.sleep(wait)
+
     return video_id
 
 
 def add_to_playlist(creds, video_id, playlist_id):
     service = build("youtube", "v3", credentials=creds)
-    service.playlistItems().insert(
-        part="snippet",
-        body={
-            "snippet": {
-                "playlistId": playlist_id,
-                "resourceId": {
-                    "kind": "youtube#video",
-                    "videoId": video_id,
-                },
-            }
-        },
-    ).execute()
-    print(f"  Added to playlist: {playlist_id}")
+    body = {
+        "snippet": {
+            "playlistId": playlist_id,
+            "resourceId": {
+                "kind": "youtube#video",
+                "videoId": video_id,
+            },
+        }
+    }
+    max_retries = 5
+    retry = 0
+    while True:
+        try:
+            service.playlistItems().insert(part="snippet", body=body).execute()
+            print(f"  Added to playlist: {playlist_id}")
+            return
+        except HttpError as e:
+            if e.resp.status in (500, 502, 503, 504):
+                retry += 1
+                if retry > max_retries:
+                    raise
+                wait = min(2 ** retry, 64)
+                print(f"  HTTP {e.resp.status} エラー、{wait}秒後にリトライ ({retry}/{max_retries})...")
+                time.sleep(wait)
+            else:
+                raise
+        except (ssl.SSLEOFError, ssl.SSLError, ConnectionResetError, BrokenPipeError, OSError) as e:
+            retry += 1
+            if retry > max_retries:
+                raise
+            wait = min(2 ** retry, 64)
+            print(f"  ネットワークエラー ({type(e).__name__})、{wait}秒後にリトライ ({retry}/{max_retries})...")
+            time.sleep(wait)
 
 
 def main():

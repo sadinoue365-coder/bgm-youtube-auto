@@ -119,10 +119,23 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
 
     video_id = response["id"]
     print(f"  Uploaded: https://www.youtube.com/watch?v={video_id}")
-    service.thumbnails().set(
-        videoId=video_id,
-        media_body=MediaFileUpload(thumbnail_path, mimetype="image/jpeg"),
-    ).execute()
+
+    retry = 0
+    while True:
+        try:
+            service.thumbnails().set(
+                videoId=video_id,
+                media_body=MediaFileUpload(thumbnail_path, mimetype="image/jpeg"),
+            ).execute()
+            break
+        except (ssl.SSLEOFError, ssl.SSLError, ConnectionResetError, BrokenPipeError, OSError) as e:
+            retry += 1
+            if retry > max_retries:
+                raise
+            wait = min(2 ** retry, 64)
+            print(f"  サムネイル設定エラー ({type(e).__name__})、{wait}秒後にリトライ ({retry}/{max_retries})...")
+            time.sleep(wait)
+
     return video_id
 
 
