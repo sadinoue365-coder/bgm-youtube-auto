@@ -103,21 +103,35 @@ def _download_from_drive(creds, folder_id, output_path) -> bool:
     """フォールバック：DriveフォルダからランダムにDL。成功すれば True を返す。"""
     try:
         service = build("drive", "v3", credentials=creds)
+        # mimeType contains 'image/' で全画像形式を受け入れる
+        # (jpeg/png だけでなく heic / webp / gif 等も拾う)
         results = service.files().list(
             q=(
                 f"'{folder_id}' in parents and trashed=false "
-                "and (mimeType='image/jpeg' or mimeType='image/png')"
+                "and mimeType contains 'image/'"
             ),
-            fields="files(id, name)",
+            fields="files(id, name, mimeType)",
             pageSize=100,
         ).execute()
         all_files = results.get("files", [])
+
+        # mimeType内訳をログ出力（どの形式が入っているか可視化）
+        mime_summary = {}
+        for f in all_files:
+            mt = f.get("mimeType", "?")
+            mime_summary[mt] = mime_summary.get(mt, 0) + 1
+
+        # パイプライン(FFmpeg/PIL)が確実に扱える形式のみ採用
+        SAFE_MIMES = {"image/jpeg", "image/png", "image/webp"}
         files = [
             f for f in all_files
-            if "スクリーンショット" not in f["name"]
+            if f.get("mimeType") in SAFE_MIMES
+            and "スクリーンショット" not in f["name"]
             and "screenshot" not in f["name"].lower()
         ]
-        print(f"  Drive: 全{len(all_files)}件中 使用可能{len(files)}件")
+        print(f"  Drive: 全{len(all_files)}件  採用可能{len(files)}件  内訳={mime_summary}")
+        if not files and all_files:
+            print("  ⚠ 画像は存在するが対応形式(jpeg/png/webp)が0件。HEIC等は要変換")
         if not files:
             print("  Drive: 使用可能な画像なし → PILフォールバックへ")
             return False
