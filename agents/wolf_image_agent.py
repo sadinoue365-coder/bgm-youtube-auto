@@ -99,21 +99,59 @@ def _generate_flux_image(scene, output_path, retries=4):
     return False
 
 
+def _collect_folder_ids(service, root_folder_id, max_depth=3) -> list[str]:
+    """root_folder_id 配下のサブフォルダを再帰的に辿り、全フォルダIDを返す。"""
+    folder_ids = [root_folder_id]
+    frontier = [root_folder_id]
+    depth = 0
+    while frontier and depth < max_depth:
+        next_frontier = []
+        for fid in frontier:
+            resp = service.files().list(
+                q=(
+                    f"'{fid}' in parents and trashed=false "
+                    "and mimeType='application/vnd.google-apps.folder'"
+                ),
+                fields="files(id, name)",
+                pageSize=100,
+            ).execute()
+            for sub in resp.get("files", []):
+                folder_ids.append(sub["id"])
+                next_frontier.append(sub["id"])
+        frontier = next_frontier
+        depth += 1
+    return folder_ids
+
+
 def _download_from_drive(creds, folder_id, output_path) -> bool:
     """フォールバック：DriveフォルダからランダムにDL。成功すれば True を返す。"""
     try:
         service = build("drive", "v3", credentials=creds)
+
+        # サブフォルダも再帰的に探索（直下だけでなく入れ子の画像も拾う）
+        folder_ids = _collect_folder_ids(service, folder_id)
+        if len(folder_ids) > 1:
+            print(f"  Drive: {len(folder_ids)}フォルダを探索（サブフォルダ含む）")
+        parents_clause = " or ".join(f"'{fid}' in parents" for fid in folder_ids)
+
         # mimeType contains 'image/' で全画像形式を受け入れる
         # (jpeg/png だけでなく heic / webp / gif 等も拾う)
-        results = service.files().list(
-            q=(
-                f"'{folder_id}' in parents and trashed=false "
-                "and mimeType contains 'image/'"
-            ),
-            fields="files(id, name, mimeType)",
-            pageSize=100,
-        ).execute()
-        all_files = results.get("files", [])
+        all_files = []
+        page_token = None
+        while True:
+            results = service.files().list(
+                q=(
+                    f"({parents_clause}) and trashed=false "
+                    "and mimeType contains 'image/'"
+                ),
+                fields="nextPageToken, files(id, name, mimeType)",
+                pageSize=100,
+                pageToken=page_token,
+            ).execute()
+            all_files.extend(results.get("files", []))
+            page_token = results.get("nextPageToken")
+            if not page_token:
+                break
 
         # mimeType内訳をログ出力（どの形式が入っているか可視化）
         mime_summary = {}
