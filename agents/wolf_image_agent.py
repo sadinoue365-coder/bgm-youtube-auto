@@ -1,9 +1,9 @@
 import io
-import math
 import os
 import random
 import ssl
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -94,6 +94,12 @@ def _generate_flux_image(scene, output_path, retries=4):
                 f.write(data)
             print(f"  Flux生成成功: '{scene[:50]}' ({len(data)//1024}KB)")
             return True
+        except urllib.error.HTTPError as e:
+            print(f"  Flux attempt {attempt+1} failed: HTTP Error {e.code}: {e.reason}")
+            # 4xx (402 Payment Required 等) は恒久エラー → リトライ無意味、即中断
+            if 400 <= e.code < 500 and e.code != 429:
+                print(f"  Flux: HTTP {e.code} は恒久エラーのためリトライ中止（Driveへ）")
+                return False
         except Exception as e:
             print(f"  Flux attempt {attempt+1} failed: {e}")
     return False
@@ -223,9 +229,12 @@ def _generate_pil_background(output_path) -> None:
 def generate_wolf_image(creds, folder_id, output_path="work/wolf_bg.jpg"):
     """
     狼画像を3段階フォールバックで取得する。
-      1st: Pollinations.ai Flux でAI生成（4回リトライ）
-      2nd: Drive フォルダからランダムDL
+      1st: Pollinations.ai Flux でAI生成（402等の恒久エラー時は即中断）
+      2nd: Drive フォルダ（サブフォルダ含む）からランダムDL
       3rd: PIL でノワール調暗背景を生成（絶対に失敗しない）
+
+    ※2025年時点で Flux は 402 Payment Required を返すことがあり、
+      その場合は実質 Drive がメインソースとなる。
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
