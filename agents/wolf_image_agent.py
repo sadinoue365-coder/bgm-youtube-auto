@@ -1,4 +1,5 @@
 import io
+import math
 import os
 import random
 import ssl
@@ -98,51 +99,97 @@ def _generate_flux_image(scene, output_path, retries=4):
     return False
 
 
-def _download_from_drive(creds, folder_id, output_path):
-    """フォールバック：DriveフォルダからランダムにDL"""
-    service = build("drive", "v3", credentials=creds)
-    results = service.files().list(
-        q=(
-            f"'{folder_id}' in parents and trashed=false "
-            "and (mimeType='image/jpeg' or mimeType='image/png')"
-        ),
-        fields="files(id, name)",
-        pageSize=100,
-    ).execute()
-    all_files = results.get("files", [])
-    files = [
-        f for f in all_files
-        if "スクリーンショット" not in f["name"]
-        and "screenshot" not in f["name"].lower()
-    ]
-    if not files:
-        raise Exception("Drive フォルダに使用可能な画像がありません")
+def _download_from_drive(creds, folder_id, output_path) -> bool:
+    """フォールバック：DriveフォルダからランダムにDL。成功すれば True を返す。"""
+    try:
+        service = build("drive", "v3", credentials=creds)
+        results = service.files().list(
+            q=(
+                f"'{folder_id}' in parents and trashed=false "
+                "and (mimeType='image/jpeg' or mimeType='image/png')"
+            ),
+            fields="files(id, name)",
+            pageSize=100,
+        ).execute()
+        all_files = results.get("files", [])
+        files = [
+            f for f in all_files
+            if "スクリーンショット" not in f["name"]
+            and "screenshot" not in f["name"].lower()
+        ]
+        print(f"  Drive: 全{len(all_files)}件中 使用可能{len(files)}件")
+        if not files:
+            print("  Drive: 使用可能な画像なし → PILフォールバックへ")
+            return False
 
-    chosen = random.choice(files)
-    print(f"  Fallback: Drive画像を使用 ({chosen['name']})")
-    request = service.files().get_media(fileId=chosen["id"])
-    with io.FileIO(output_path, "wb") as fh:
-        downloader = MediaIoBaseDownload(fh, request)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
+        chosen = random.choice(files)
+        print(f"  Fallback: Drive画像を使用 ({chosen['name']})")
+        request = service.files().get_media(fileId=chosen["id"])
+        with io.FileIO(output_path, "wb") as fh:
+            downloader = MediaIoBaseDownload(fh, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+        return True
+    except Exception as e:
+        print(f"  Drive取得失敗: {e} → PILフォールバックへ")
+        return False
+
+
+def _generate_pil_background(output_path) -> None:
+    """最終フォールバック：PILでノワール調の暗背景を生成する。"""
+    from PIL import Image, ImageDraw, ImageFilter
+
+    W, H = 1920, 1080
+    img = Image.new("RGB", (W, H))
+    draw = ImageDraw.Draw(img)
+
+    # 深い紺〜黒のグラデーション（縦方向）
+    for y in range(H):
+        t = y / H
+        r = int(8 + t * 12)
+        g = int(5 + t * 8)
+        b = int(18 + t * 22)
+        draw.line([(0, y), (W, y)], fill=(r, g, b))
+
+    # 中央に薄いビネット（周辺を暗く）
+    vignette = Image.new("L", (W, H), 0)
+    vd = ImageDraw.Draw(vignette)
+    cx, cy = W // 2, H // 2
+    for i in range(min(cx, cy), 0, -1):
+        alpha = int(180 * (1 - i / min(cx, cy)) ** 2)
+        vd.ellipse([cx - i, cy - i, cx + i, cy + i], fill=alpha)
+    vignette = vignette.filter(ImageFilter.GaussianBlur(radius=80))
+    img_rgba = img.convert("RGBA")
+    img_rgba.paste((0, 0, 0, 255), mask=vignette)
+    img = img_rgba.convert("RGB")
+
+    img.save(output_path, "JPEG", quality=90)
+    print("  PIL暗背景を生成しました（最終フォールバック）")
 
 
 def generate_wolf_image(creds, folder_id, output_path="work/wolf_bg.jpg"):
     """
-    Pollinations.ai Flux でシーン別の狼画像を生成する。
-    生成に失敗した場合は Drive フォルダの画像をフォールバックとして使用。
+    狼画像を3段階フォールバックで取得する。
+      1st: Pollinations.ai Flux でAI生成（4回リトライ）
+      2nd: Drive フォルダからランダムDL
+      3rd: PIL でノワール調暗背景を生成（絶対に失敗しない）
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     scene = random.choice(SCENES)
     print(f"  Scene: {scene}")
 
-    success = _generate_flux_image(scene, output_path)
+    # 1st: Flux
+    if _generate_flux_image(scene, output_path):
+        return output_path, scene
 
-    if not success:
-        print("  Flux生成失敗。Driveフォールバックを使用。")
-        _download_from_drive(creds, folder_id, output_path)
-        scene = "jazz noir wolf"
+    # 2nd: Drive
+    print("  Flux生成失敗。Driveフォールバックを試みます...")
+    if _download_from_drive(creds, folder_id, output_path):
+        return output_path, "jazz noir wolf"
 
-    return output_path, scene
+    # 3rd: PIL（絶対フォールバック）
+    print("  Drive取得も失敗。PIL生成にフォールバックします...")
+    _generate_pil_background(output_path)
+    return output_path, "jazz noir wolf"
