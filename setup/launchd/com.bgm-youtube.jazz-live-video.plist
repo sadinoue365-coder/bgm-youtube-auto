@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bgm-youtube.jazz-live-video</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/venv/bin/python</string>
+    <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/live_video_main.py</string>
+    <string>jazz</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto</string>
+
+  <!-- クラッシュ・終了時に自動再起動（24/7配信を維持） -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Mac起動時に自動開始 -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/logs/launchd_jazz_live_video.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/Shinsaku/Desktop/bgm-youtube-auto/logs/launchd_jazz_live_video_err.log</string>
+
+  <!-- 環境変数は setup/.live.env から読み込むため、ここでは最小限 -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>
