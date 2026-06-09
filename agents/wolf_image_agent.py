@@ -50,8 +50,54 @@ BASE_PROMPT = (
 )
 
 
+def _generate_hf_image(scene, output_path, retries=2) -> bool:
+    """
+    Hugging Face Inference Providers の FLUX.1-schnell でシーン別狼画像を生成。
+    環境変数 HF_API_TOKEN が必要（無料トークンで可）。未設定なら False を返す。
+    """
+    token = os.environ.get("HF_API_TOKEN") or os.environ.get("HF_TOKEN")
+    if not token:
+        print("  HF: HF_API_TOKEN 未設定 → スキップ")
+        return False
+
+    full_prompt = BASE_PROMPT + scene
+
+    try:
+        from huggingface_hub import InferenceClient
+    except ImportError:
+        print("  HF: huggingface_hub 未インストール → スキップ")
+        return False
+
+    client = InferenceClient(api_key=token)
+
+    for attempt in range(retries):
+        try:
+            if attempt > 0:
+                wait = 15 * attempt
+                print(f"  HF: {wait}秒待機してリトライ...")
+                time.sleep(wait)
+            image = client.text_to_image(
+                prompt=full_prompt,
+                model="black-forest-labs/FLUX.1-schnell",
+                width=1920,
+                height=1080,
+            )
+            # PIL.Image を JPEG で保存
+            image.convert("RGB").save(output_path, "JPEG", quality=90)
+            print(f"  HF生成成功: '{scene[:50]}' (FLUX.1-schnell)")
+            return True
+        except Exception as e:
+            msg = str(e)
+            print(f"  HF attempt {attempt+1} failed: {msg[:120]}")
+            # 認証エラー・課金エラーは恒久 → 即中断
+            if any(code in msg for code in ("401", "402", "403")):
+                print("  HF: 認証/課金エラーのためリトライ中止（Driveへ）")
+                return False
+    return False
+
+
 def _generate_flux_image(scene, output_path, retries=4):
-    """Pollinations.ai Flux モデルでシーン別狼画像を生成"""
+    """[非推奨] Pollinations.ai Flux（2025年に有料化・402のため実質使用不可）"""
     full_prompt = BASE_PROMPT + scene
     encoded_prompt = urllib.parse.quote(full_prompt)
     seed = random.randint(1, 999999)
@@ -229,24 +275,23 @@ def _generate_pil_background(output_path) -> None:
 def generate_wolf_image(creds, folder_id, output_path="work/wolf_bg.jpg"):
     """
     狼画像を3段階フォールバックで取得する。
-      1st: Pollinations.ai Flux でAI生成（402等の恒久エラー時は即中断）
+      1st: Hugging Face FLUX.1-schnell でAI生成（要 HF_API_TOKEN）
       2nd: Drive フォルダ（サブフォルダ含む）からランダムDL
       3rd: PIL でノワール調暗背景を生成（絶対に失敗しない）
 
-    ※2025年時点で Flux は 402 Payment Required を返すことがあり、
-      その場合は実質 Drive がメインソースとなる。
+    ※旧 Pollinations Flux は 2025 年に有料化（402）したため HF に移行。
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     scene = random.choice(SCENES)
     print(f"  Scene: {scene}")
 
-    # 1st: Flux
-    if _generate_flux_image(scene, output_path):
+    # 1st: Hugging Face FLUX.1-schnell
+    if _generate_hf_image(scene, output_path):
         return output_path, scene
 
     # 2nd: Drive
-    print("  Flux生成失敗。Driveフォールバックを試みます...")
+    print("  HF生成失敗。Driveフォールバックを試みます...")
     if _download_from_drive(creds, folder_id, output_path):
         return output_path, "jazz noir wolf"
 

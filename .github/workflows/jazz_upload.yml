@@ -31,4 +31,5 @@ jobs:
           JAZZ_REFRESH_TOKEN: ${{ secrets.JAZZ_REFRESH_TOKEN }}
           JAZZ_GDRIVE_FOLDER_ID: ${{ secrets.JAZZ_GDRIVE_FOLDER_ID }}
           JAZZ_IMAGE_FOLDER_ID: ${{ secrets.JAZZ_IMAGE_FOLDER_ID }}
+          HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
         run: python jazz_main.py
