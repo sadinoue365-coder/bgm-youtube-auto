@@ -221,15 +221,20 @@ def _download_from_drive(creds, folder_id, output_path) -> bool:
             return "スクリーンショット" in name or "screenshot" in name.lower()
 
         safe_format = [f for f in all_files if f.get("mimeType") in SAFE_MIMES]
-        files = [f for f in safe_format if not _is_screenshot(f["name"])]
+        non_screenshot = [f for f in safe_format if not _is_screenshot(f["name"])]
+
+        # 通常画像を優先。無ければ真っ黒にするより Screenshot 画像でも使う
+        if non_screenshot:
+            files = non_screenshot
+        elif safe_format:
+            files = safe_format
+            print("  Drive: 通常画像なし → Screenshot名の画像を使用（黒背景回避）")
+        else:
+            files = []
 
         print(f"  Drive: 全{len(all_files)}件  採用可能{len(files)}件  内訳={mime_summary}")
         if not files and all_files:
-            n_screenshot = sum(1 for f in safe_format if _is_screenshot(f["name"]))
-            if n_screenshot:
-                print(f"  ⚠ 対応形式は{len(safe_format)}件あるが全てスクリーンショット名で除外（狼画像を追加してください）")
-            else:
-                print("  ⚠ 対応形式(jpeg/png/webp)が0件。HEIC等は要変換")
+            print("  ⚠ 対応形式(jpeg/png/webp)が0件。HEIC等は要変換")
         if not files:
             print("  Drive: 使用可能な画像なし → PILフォールバックへ")
             return False
