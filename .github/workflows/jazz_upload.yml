@@ -32,4 +32,7 @@ jobs:
           JAZZ_GDRIVE_FOLDER_ID: ${{ secrets.JAZZ_GDRIVE_FOLDER_ID }}
           JAZZ_IMAGE_FOLDER_ID: ${{ secrets.JAZZ_IMAGE_FOLDER_ID }}
           HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
+          REPORT_GMAIL_ADDRESS: ${{ secrets.REPORT_GMAIL_ADDRESS }}
+          REPORT_GMAIL_APP_PASSWORD: ${{ secrets.REPORT_GMAIL_APP_PASSWORD }}
+          REPORT_TO_EMAIL: ${{ secrets.REPORT_TO_EMAIL }}
         run: python jazz_main.py

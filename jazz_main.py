@@ -232,11 +232,24 @@ def main():
                             output_path=f"{config.WORK_DIR}/looped.mp3")
 
     print("\n[4/6] Fetching wolf image from Google Drive...")
-    image_path, _ = generate_wolf_image(
+    image_path, _, img_source = generate_wolf_image(
         creds,
         config.IMAGE_FOLDER_ID,
         output_path=f"{config.WORK_DIR}/wolf_bg.jpg",
     )
+    # ソフト障害監視: AI生成もDrive取得も失敗し真っ暗なPIL背景になった場合は即通知
+    if img_source == "pil":
+        from agents.alert_agent import send_alert
+        send_alert(
+            "Jazz画像が真っ暗なフォールバックになりました",
+            "Jazzの動画生成で、HF(AI生成)とDrive取得の両方が失敗し、\n"
+            "PILの黒背景にフォールバックしました。サムネ・背景が真っ暗になります。\n\n"
+            "考えられる原因:\n"
+            "  1. HF_API_TOKEN の無料枠超過/失効、またはHF側の一時障害\n"
+            "  2. JAZZ_IMAGE_FOLDER_ID のフォルダに狼画像が無い"
+            "（スクリーンショットのみは除外されます）\n\n"
+            "対処: Driveフォルダに狼のjpg/png画像を入れる / HFトークンを確認してください。",
+        )
 
     print("\n[5/6] Creating video...")
     video_path = create_jazz_video(image_path, audio_path,

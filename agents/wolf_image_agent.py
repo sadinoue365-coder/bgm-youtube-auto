@@ -50,10 +50,11 @@ BASE_PROMPT = (
 )
 
 
-def _generate_hf_image(scene, output_path, retries=2) -> bool:
+def _generate_hf_image(scene, output_path, retries=4) -> bool:
     """
     Hugging Face Inference Providers の FLUX.1-schnell でシーン別狼画像を生成。
     環境変数 HF_API_TOKEN が必要（無料トークンで可）。未設定なら False を返す。
+    CloudFront等の一時的な5xx/接続エラーには指数バックオフでリトライする。
     """
     token = os.environ.get("HF_API_TOKEN") or os.environ.get("HF_TOKEN")
     if not token:
@@ -73,8 +74,8 @@ def _generate_hf_image(scene, output_path, retries=2) -> bool:
     for attempt in range(retries):
         try:
             if attempt > 0:
-                wait = 15 * attempt
-                print(f"  HF: {wait}秒待機してリトライ...")
+                wait = min(10 * (2 ** (attempt - 1)), 80)  # 10,20,40,80...
+                print(f"  HF: {wait}秒待機してリトライ ({attempt+1}/{retries})...")
                 time.sleep(wait)
             image = client.text_to_image(
                 prompt=full_prompt,
@@ -87,12 +88,14 @@ def _generate_hf_image(scene, output_path, retries=2) -> bool:
             print(f"  HF生成成功: '{scene[:50]}' (FLUX.1-schnell)")
             return True
         except Exception as e:
-            msg = str(e)
-            print(f"  HF attempt {attempt+1} failed: {msg[:120]}")
+            # エラー型も出す（空メッセージのCloudFrontエラー対策）
+            msg = f"{type(e).__name__}: {str(e)}"
+            print(f"  HF attempt {attempt+1} failed: {msg[:150]}")
             # 認証エラー・課金エラーは恒久 → 即中断
-            if any(code in msg for code in ("401", "402", "403")):
+            if any(code in str(e) for code in ("401", "402", "403")):
                 print("  HF: 認証/課金エラーのためリトライ中止（Driveへ）")
                 return False
+    print(f"  HF: {retries}回すべて失敗 → Driveへ")
     return False
 
 
@@ -213,15 +216,20 @@ def _download_from_drive(creds, folder_id, output_path) -> bool:
 
         # パイプライン(FFmpeg/PIL)が確実に扱える形式のみ採用
         SAFE_MIMES = {"image/jpeg", "image/png", "image/webp"}
-        files = [
-            f for f in all_files
-            if f.get("mimeType") in SAFE_MIMES
-            and "スクリーンショット" not in f["name"]
-            and "screenshot" not in f["name"].lower()
-        ]
+
+        def _is_screenshot(name: str) -> bool:
+            return "スクリーンショット" in name or "screenshot" in name.lower()
+
+        safe_format = [f for f in all_files if f.get("mimeType") in SAFE_MIMES]
+        files = [f for f in safe_format if not _is_screenshot(f["name"])]
+
         print(f"  Drive: 全{len(all_files)}件  採用可能{len(files)}件  内訳={mime_summary}")
         if not files and all_files:
-            print("  ⚠ 画像は存在するが対応形式(jpeg/png/webp)が0件。HEIC等は要変換")
+            n_screenshot = sum(1 for f in safe_format if _is_screenshot(f["name"]))
+            if n_screenshot:
+                print(f"  ⚠ 対応形式は{len(safe_format)}件あるが全てスクリーンショット名で除外（狼画像を追加してください）")
+            else:
+                print("  ⚠ 対応形式(jpeg/png/webp)が0件。HEIC等は要変換")
         if not files:
             print("  Drive: 使用可能な画像なし → PILフォールバックへ")
             return False
@@ -280,6 +288,10 @@ def generate_wolf_image(creds, folder_id, output_path="work/wolf_bg.jpg"):
       3rd: PIL でノワール調暗背景を生成（絶対に失敗しない）
 
     ※旧 Pollinations Flux は 2025 年に有料化（402）したため HF に移行。
+
+    Returns:
+        (output_path, scene, source) — source は "hf" / "drive" / "pil"。
+        "pil" は AI/Drive ともに失敗した黒背景フォールバック＝要監視。
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -288,14 +300,14 @@ def generate_wolf_image(creds, folder_id, output_path="work/wolf_bg.jpg"):
 
     # 1st: Hugging Face FLUX.1-schnell
     if _generate_hf_image(scene, output_path):
-        return output_path, scene
+        return output_path, scene, "hf"
 
     # 2nd: Drive
     print("  HF生成失敗。Driveフォールバックを試みます...")
     if _download_from_drive(creds, folder_id, output_path):
-        return output_path, "jazz noir wolf"
+        return output_path, "jazz noir wolf", "drive"
 
     # 3rd: PIL（絶対フォールバック）
     print("  Drive取得も失敗。PIL生成にフォールバックします...")
     _generate_pil_background(output_path)
-    return output_path, "jazz noir wolf"
+    return output_path, "jazz noir wolf", "pil"
