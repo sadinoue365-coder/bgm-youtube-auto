@@ -42,6 +42,20 @@ SETTINGS = [
     "for Dimly Lit Rooms", "for Thinking Too Much", "for Night Owls",
 ]
 
+# タイトル先頭に置く検索需要の高いフレーズ（YouTube検索で実際に打たれる言葉）
+SEARCH_HOOKS = [
+    "Relaxing Jazz for Sleep",
+    "Late Night Jazz for Work & Study",
+    "Rainy Night Jazz",
+    "Jazz for Deep Sleep & Stress Relief",
+    "Study Jazz Music",
+    "Smooth Jazz for Relaxing",
+    "Night Jazz Bar Ambience",
+    "Jazz Piano for Work & Focus",
+    "Calm Jazz for Reading",
+    "Sleep Jazz Music",
+]
+
 
 def get_credentials():
     client_info = json.loads(config.CLIENT_SECRET_JSON)
@@ -162,14 +176,17 @@ def generate_metadata(scene, target_hours):
     mood = random.choice(MOODS)
     style = random.choice(STYLES)
     setting = random.choice(SETTINGS)
+    hook = random.choice(SEARCH_HOOKS)
     now = datetime.datetime.now()
     dur = format_duration(target_hours)
 
-    title = f"Jazz BGM | {mood} {style} {setting} | {dur}"
+    # 検索需要ワードを先頭に、キャラ性(mood/style)を後半に
+    title = f"{hook} 🎷 {mood} {style} {setting} | {dur}"
 
-    description = f"""🐺 {dur} {mood} {style} for Late Nights & Deep Focus
+    # 冒頭2行は検索インデックス用のキーワード文（詩的表現はその後）
+    description = f"""Relaxing jazz music for sleeping, studying, working and stress relief. {dur} of {style.lower()} with a smoky midnight bar atmosphere — perfect background music for deep focus, reading, or falling asleep.
 
-Step into the smoky world of noir jazz.
+🐺 Step into the smoky world of Red Wolf's noir jazz.
 
 Perfect for:
 ✅ Late night work sessions
@@ -196,10 +213,10 @@ Perfect for:
 """
 
     tags = [
-        "jazz", "noir jazz", style, "BGM", "late night music",
-        "work music", "focus music", "relaxing jazz", "smooth jazz",
-        "AI music", "no copyright music", f"{format_duration(target_hours).lower()} mix",
-        "night music", "dark jazz", "cool jazz",
+        "jazz", "relaxing jazz", "jazz for sleep", "study jazz", "jazz for work",
+        "late night jazz", "rainy night jazz", "jazz bar ambience", "smooth jazz",
+        "sleep music", "study music", "focus music", "background music",
+        "noir jazz", style, "BGM", f"{format_duration(target_hours).lower()} mix",
     ]
 
     return title, description, tags

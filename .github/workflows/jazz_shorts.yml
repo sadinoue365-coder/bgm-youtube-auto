@@ -1,0 +1,38 @@
+name: Jazz Shorts Upload
+
+on:
+  schedule:
+    - cron: '0 10 * * 2,5'  # 火・金 19:00 JST (= 10:00 UTC) — 本編(18:00)の1時間後
+  workflow_dispatch:
+
+jobs:
+  shorts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Jazz Shorts automation
+        env:
+          JAZZ_CLIENT_SECRET_JSON: ${{ secrets.JAZZ_CLIENT_SECRET_JSON }}
+          JAZZ_REFRESH_TOKEN: ${{ secrets.JAZZ_REFRESH_TOKEN }}
+          JAZZ_GDRIVE_FOLDER_ID: ${{ secrets.JAZZ_GDRIVE_FOLDER_ID }}
+          JAZZ_IMAGE_FOLDER_ID: ${{ secrets.JAZZ_IMAGE_FOLDER_ID }}
+          HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
+          REPORT_GMAIL_ADDRESS: ${{ secrets.REPORT_GMAIL_ADDRESS }}
+          REPORT_GMAIL_APP_PASSWORD: ${{ secrets.REPORT_GMAIL_APP_PASSWORD }}
+          REPORT_TO_EMAIL: ${{ secrets.REPORT_TO_EMAIL }}
+        run: python jazz_shorts_main.py
