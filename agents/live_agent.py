@@ -43,18 +43,22 @@ CHANNEL_CONFIGS: dict[str, dict] = {
         "client_secret_env": "JAZZ_CLIENT_SECRET_JSON",
         "refresh_token_env": "JAZZ_REFRESH_TOKEN",
         "gdrive_folder_env": "JAZZ_GDRIVE_FOLDER_ID",
+        "image_folder_env": "JAZZ_IMAGE_FOLDER_ID",  # 画像ローテーション用
         "video_type": "image",
         "thumbnail": "live_thumbnail_jazz.jpg",
         "video_bitrate": "2000k",
+        "rotate_hours": 6,  # 6時間ごとに画像+曲順を入れ替え(数秒の瞬断あり)
     },
     "cafe": {
         "stream_key_env": "CAFE_LIVE_STREAM_KEY",
         "client_secret_env": "CAFE_CLIENT_SECRET_JSON",
         "refresh_token_env": "CAFE_REFRESH_TOKEN",
         "gdrive_folder_env": "CAFE_GDRIVE_FOLDER_ID",
+        "image_folder_env": "CAFE_IMAGE_FOLDER_ID",
         "video_type": "image",
         "thumbnail": "live_thumbnail_cafe.jpg",
         "video_bitrate": "2000k",
+        "rotate_hours": 6,
     },
     "sleep": {
         "stream_key_env": "SLEEP_LIVE_STREAM_KEY",
@@ -194,6 +198,49 @@ def _make_concat_playlist(audio_files: list[Path], out_path: Path) -> None:
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _rotate_live_image(channel: str, cfg: dict) -> None:
+    """
+    Drive の画像フォルダからランダムに1枚DLしてライブ背景を差し替える。
+    失敗しても既存の画像で続行する（配信は止めない）。
+    """
+    image_folder_env = cfg.get("image_folder_env")
+    if not image_folder_env:
+        return
+    folder_id = os.environ.get(image_folder_env)
+    client_secret = os.environ.get(cfg["client_secret_env"])
+    refresh_token = os.environ.get(cfg["refresh_token_env"])
+    if not all([folder_id, client_secret, refresh_token]):
+        return
+
+    try:
+        from googleapiclient.http import MediaIoBaseDownload
+        import io
+
+        creds = _get_credentials(client_secret, refresh_token)
+        drive = build("drive", "v3", credentials=creds)
+        r = drive.files().list(
+            q=f"'{folder_id}' in parents and trashed=false and mimeType contains 'image/'",
+            fields="files(id,name)",
+            pageSize=200,
+        ).execute()
+        files = r.get("files", [])
+        if not files:
+            return
+        chosen = random.choice(files)
+        thumbnail_name = cfg.get("thumbnail", f"live_thumbnail_{channel}.jpg")
+        out_path = ASSETS_DIR / thumbnail_name
+        ASSETS_DIR.mkdir(exist_ok=True)
+        req = drive.files().get_media(fileId=chosen["id"])
+        with io.FileIO(out_path, "wb") as fh:
+            dl = MediaIoBaseDownload(fh, req)
+            done = False
+            while not done:
+                _, done = dl.next_chunk()
+        print(f"[live:{channel}] 背景画像を更新: {chosen['name']}")
+    except Exception as e:
+        print(f"[live:{channel}] 画像更新失敗（既存画像で続行）: {e}")
+
+
 def _build_video_args(cfg: dict, channel: str) -> list[str]:
     """
     映像ソースの FFmpeg 入力引数を返す。
@@ -244,7 +291,13 @@ def stream_forever(channel: str, cfg: dict, audio_files: list[Path]) -> None:
                 audio_files = new_files
             last_cache_refresh = datetime.now(timezone.utc)
 
-        _make_concat_playlist(audio_files, playlist_path)
+        # ローテーション: 背景画像をランダム更新 + 曲順シャッフル
+        rotate_hours = cfg.get("rotate_hours")
+        _rotate_live_image(channel, cfg)
+        shuffled = list(audio_files)
+        random.shuffle(shuffled)
+        _make_concat_playlist(shuffled, playlist_path)
+
         video_args = _build_video_args(cfg, channel)
         bitrate = cfg.get("video_bitrate", "2000k")
         buf_size = str(int(bitrate.rstrip("k")) * 2) + "k"
@@ -264,12 +317,15 @@ def stream_forever(channel: str, cfg: dict, audio_files: list[Path]) -> None:
             "-g", "60", "-keyint_min", "60",
             # 音声エンコード
             "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
-            # 出力
-            "-f", "flv", rtmp_url,
         ]
+        if rotate_hours:
+            # 指定時間で正常終了させ、次のループで画像+曲順を入れ替える
+            cmd += ["-t", str(int(rotate_hours * 3600))]
+        cmd += ["-f", "flv", rtmp_url]
 
         start_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        print(f"[live:{channel}] 配信開始 {start_time}  ({len(audio_files)} 曲)")
+        rotate_note = f" / {rotate_hours}hごとに入替" if rotate_hours else ""
+        print(f"[live:{channel}] 配信開始 {start_time}  ({len(shuffled)} 曲{rotate_note})")
 
         with open(log_path, "a") as log_fp:
             log_fp.write(f"\n=== START {start_time} ===\n")
