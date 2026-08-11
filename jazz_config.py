@@ -6,6 +6,7 @@ REFRESH_TOKEN = os.environ.get("JAZZ_REFRESH_TOKEN", "")
 CLIENT_SECRET_JSON = os.environ.get("JAZZ_CLIENT_SECRET_JSON", "")
 
 CHANNEL_NAME = "Red Wolf's Lounge"
+PUBLISH_HOUR_JST = 18  # 毎日18:00 JSTに定時公開
 NUM_SONGS = 10
 TARGET_HOURS = 3
 

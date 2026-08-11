@@ -176,8 +176,18 @@ Perfect for:
     return title, description, tags
 
 
-def upload_video(creds, video_path, thumbnail_path, title, description, tags):
+def upload_video(creds, video_path, thumbnail_path, title, description, tags,
+                 publish_at_utc=None):
     service = build("youtube", "v3", credentials=creds)
+    status = {
+        "privacyStatus": "public",
+        "selfDeclaredMadeForKids": False,
+        "madeForKids": False,
+    }
+    if publish_at_utc is not None:
+        from agents.publish_agent import to_rfc3339
+        status["privacyStatus"] = "private"
+        status["publishAt"] = to_rfc3339(publish_at_utc)
     body = {
         "snippet": {
             "title": title,
@@ -185,11 +195,7 @@ def upload_video(creds, video_path, thumbnail_path, title, description, tags):
             "tags": tags,
             "categoryId": "10",
         },
-        "status": {
-            "privacyStatus": "public",
-            "selfDeclaredMadeForKids": False,
-            "madeForKids": False,
-        },
+        "status": status,
     }
     media = MediaFileUpload(
         video_path, mimetype="video/mp4", resumable=True, chunksize=50 * 1024 * 1024
@@ -328,12 +334,16 @@ def main():
         style="sleep",
     )
 
-    video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags)
+    from agents.publish_agent import next_publish_time_utc, JST
+    publish_at = next_publish_time_utc(config.PUBLISH_HOUR_JST)
+    print(f"  予約公開: {publish_at.astimezone(JST).strftime('%m/%d %H:%M JST')}")
+    video_id = upload_video(creds, video_path, thumbnail_path, title, description, tags,
+                            publish_at_utc=publish_at)
 
     print("\nAdding to playlist...")
     add_to_playlist(creds, video_id, config.PLAYLIST_ID)
 
-    record_upload("sleep", video_id)
+    record_upload("sleep", video_id, published_at=publish_at)
 
     print("\nCleaning up...")
     cleanup(config.WORK_DIR)

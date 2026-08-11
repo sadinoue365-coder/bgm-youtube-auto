@@ -6,6 +6,7 @@ CLIENT_SECRET_JSON = os.environ.get("CHILL_CLIENT_SECRET_JSON", "")
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY", "")
 
 CHANNEL_NAME = "Chill Relax BGM"
+PUBLISH_HOUR_JST = 18  # 18:00 JSTに定時公開
 NUM_SONGS = 10
 TARGET_HOURS = 3
 

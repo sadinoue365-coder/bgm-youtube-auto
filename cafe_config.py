@@ -6,6 +6,7 @@ CLIENT_SECRET_JSON = os.environ.get("CAFE_CLIENT_SECRET_JSON", "")
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY", "")
 
 CHANNEL_NAME = "Coffee Shop Music Studio"
+PUBLISH_HOUR_JST = 6  # 朝06:00 JSTに定時公開（モーニング需要）
 NUM_SONGS = 10
 TARGET_HOURS = 3
 
