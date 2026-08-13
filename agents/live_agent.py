@@ -57,7 +57,9 @@ CHANNEL_CONFIGS: dict[str, dict] = {
         "image_folder_env": "CAFE_IMAGE_FOLDER_ID",
         "video_type": "image",
         "thumbnail": "live_thumbnail_cafe.jpg",
-        "video_bitrate": "2000k",
+        # 3本目はCPU節約のため720p/低ビットレート
+        "scale": "1280:720",
+        "video_bitrate": "1500k",
         "rotate_hours": 6,
     },
     "sleep": {
@@ -302,6 +304,23 @@ def stream_forever(channel: str, cfg: dict, audio_files: list[Path]) -> None:
         bitrate = cfg.get("video_bitrate", "2000k")
         buf_size = str(int(bitrate.rstrip("k")) * 2) + "k"
 
+        # 映像フィルタ: 縮小(3本目対策) + ゲストブック(チャット壁)描画
+        vf_parts = []
+        if cfg.get("scale"):
+            vf_parts.append(f"scale={cfg['scale']}")
+        wall_path = CACHE_DIR / channel / "chat_wall.txt"
+        font_path = ASSETS_DIR / "fonts" / "Oswald-Variable.ttf"
+        if cfg["video_type"] == "image" and wall_path.exists() and font_path.exists():
+            # reload=1: 壁ファイル更新が配信を止めずに画面へ反映される
+            vf_parts.append(
+                "drawtext="
+                f"textfile={wall_path.resolve()}:reload=1"
+                f":fontfile={font_path.resolve()}"
+                ":fontsize=26:fontcolor=white@0.92"
+                ":x=42:y=h-th-42:line_spacing=12"
+                ":box=1:boxcolor=black@0.45:boxborderw=16"
+            )
+
         cmd = [
             "ffmpeg", "-hide_banner",
             # 音声入力 (input 0): concat プレイリストを無限ループ
@@ -311,6 +330,10 @@ def stream_forever(channel: str, cfg: dict, audio_files: list[Path]) -> None:
             *video_args,
             # マッピング
             "-map", "1:v", "-map", "0:a",
+        ]
+        if vf_parts:
+            cmd += ["-vf", ",".join(vf_parts)]
+        cmd += [
             # 映像エンコード
             "-c:v", "libx264", "-preset", "veryfast",
             "-b:v", bitrate, "-maxrate", bitrate, "-bufsize", buf_size,
