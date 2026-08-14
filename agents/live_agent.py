@@ -307,7 +307,11 @@ def stream_forever(channel: str, cfg: dict, audio_files: list[Path]) -> None:
         # 映像フィルタ: 縮小(3本目対策) + ゲストブック(チャット壁)描画
         vf_parts = []
         if cfg.get("scale"):
-            vf_parts.append(f"scale={cfg['scale']}")
+            w, h = cfg["scale"].split(":")
+            # アスペクト比が違う画像でも歪まないよう拡大→中央クロップ
+            vf_parts.append(
+                f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
+            )
         wall_path = CACHE_DIR / channel / "chat_wall.txt"
         font_path = ASSETS_DIR / "fonts" / "Oswald-Variable.ttf"
         if cfg["video_type"] == "image" and wall_path.exists() and font_path.exists():
