@@ -37,6 +37,27 @@ _BLOCK_PATTERNS = [
     re.compile(r"\b(sub4sub|subscribe to me|check my channel)\b", re.I),
 ]
 
+# ── ウェルカムボット設定 ───────────────────────────────────────────────────────
+# 初コメントの人へチャンネル名義で自動挨拶する（承認済みチャンネルのみ）
+WELCOME_ENABLED = {"jazz"}
+
+WELCOME_TEMPLATES = {
+    "jazz": [
+        "Welcome to the lounge, {name} - the wolf tips his hat 🎩",
+        "{name} just walked into the bar. What are you drinking tonight? 🥃",
+        "Good to see a new face, {name}. Grab a seat by the window 🌧️",
+        "The wolf nods at {name}. Make yourself at home 🐺",
+    ],
+    "sleep": [
+        "Rest well, {name} 🌙",
+        "Welcome, {name}. Lights off, volume low - sweet dreams 🌙",
+    ],
+    "cafe": [
+        "Welcome in, {name}! Coffee's fresh ☕",
+        "Morning, {name} - grab your favorite seat ☕",
+    ],
+}
+
 
 def _get_credentials(channel: str) -> Credentials:
     CH = channel.upper()
@@ -81,6 +102,50 @@ def _find_active_chat_id(youtube) -> str | None:
     return None
 
 
+def _append_chat_log(log_path: Path, entry: dict) -> None:
+    """全チャットをJSONL形式で永続保存（後から遡れる自前ログ）。"""
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _load_known_authors(path: Path) -> set[str]:
+    if path.exists():
+        try:
+            return set(json.loads(path.read_text()))
+        except Exception:
+            pass
+    return set()
+
+
+def _save_known_authors(path: Path, authors: set[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(sorted(authors)))
+
+
+def _post_welcome(youtube, chat_id: str, channel: str, display_name: str) -> None:
+    """初コメントの人へチャンネル名義でウェルカム返信を投稿する。"""
+    import random as _random
+    templates = WELCOME_TEMPLATES.get(channel)
+    if not templates:
+        return
+    text = _random.choice(templates).format(name=display_name)[:190]
+    try:
+        youtube.liveChatMessages().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "liveChatId": chat_id,
+                    "type": "textMessageEvent",
+                    "textMessageDetails": {"messageText": text},
+                }
+            },
+        ).execute()
+        print(f"[chat-wall:{channel}] ウェルカム送信: {text}")
+    except Exception as e:
+        print(f"[chat-wall:{channel}] ウェルカム送信失敗: {str(e)[:120]}")
+
+
 def _write_wall(wall_path: Path, messages: list[tuple[str, str]]) -> None:
     """アトミックに壁ファイルを更新（ffmpegが読みかけの中途半端な状態を見ないように）。"""
     lines = ["=== GUEST BOOK ==="]
@@ -102,6 +167,13 @@ def run(channel: str) -> None:
     messages: list[tuple[str, str]] = []
     seen_ids: set[str] = set()
     _write_wall(wall_path, messages)  # 初期表示(CTAのみ)
+
+    # 永続データ: 全チャットログ + 既知ユーザー(ウェルカム済み)
+    data_dir = Path("data")
+    chat_log_path = data_dir / f"chat_log_{channel}.jsonl"
+    known_path = data_dir / f"chat_known_{channel}.json"
+    known_authors = _load_known_authors(known_path)
+    from datetime import datetime, timezone
 
     creds = _get_credentials(channel)
     youtube = build("youtube", "v3", credentials=creds)
@@ -136,12 +208,37 @@ def run(channel: str) -> None:
                 if snippet.get("type") != "textMessageEvent":
                     continue
                 raw = snippet.get("displayMessage", "")
-                author = _sanitize(item.get("authorDetails", {}).get("displayName", "guest"), MAX_AUTHOR)
+                author_info = item.get("authorDetails", {})
+                author = _sanitize(author_info.get("displayName", "guest"), MAX_AUTHOR)
+                author_id = author_info.get("channelId", "")
+                is_owner = author_info.get("isChatOwner", False)
+
+                # 全チャットを永続ログに保存（遡り分析用）
+                _append_chat_log(chat_log_path, {
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                    "author": author_info.get("displayName", ""),
+                    "author_id": author_id,
+                    "text": raw,
+                    "is_owner": is_owner,
+                })
+
                 text = _sanitize(raw, MAX_LEN)
                 if not text or _is_blocked(raw):
                     continue
                 messages.append((author, text))
                 new_count += 1
+
+                # 初コメントの人へウェルカム返信（自分自身は除く）
+                if (
+                    channel in WELCOME_ENABLED
+                    and author_id
+                    and author_id not in known_authors
+                    and not is_owner
+                ):
+                    _post_welcome(youtube, chat_id, channel, author or "friend")
+                if author_id and author_id not in known_authors:
+                    known_authors.add(author_id)
+                    _save_known_authors(known_path, known_authors)
 
             if new_count:
                 messages = messages[-50:]  # メモリ節約
