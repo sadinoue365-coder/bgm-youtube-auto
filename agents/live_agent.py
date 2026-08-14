@@ -68,7 +68,11 @@ CHANNEL_CONFIGS: dict[str, dict] = {
         "refresh_token_env": "SLEEP_REFRESH_TOKEN",
         "gdrive_folder_env": "SLEEP_GDRIVE_FOLDER_ID",
         "video_type": "black",
-        "video_bitrate": "1000k",
+        # 黒画面は解像度/fpsを落としても視聴体験が変わらないためCPU優先
+        "black_size": "1280x720",
+        "black_fps": 10,
+        "video_bitrate": "600k",
+        "preset": "ultrafast",
     },
 }
 
@@ -250,7 +254,9 @@ def _build_video_args(cfg: dict, channel: str) -> list[str]:
     """
     if cfg["video_type"] == "black":
         # 黒背景 (Sleep チャンネル向け)
-        return ["-f", "lavfi", "-i", "color=c=black:s=1920x1080:r=30"]
+        size = cfg.get("black_size", "1920x1080")
+        fps = cfg.get("black_fps", 30)
+        return ["-f", "lavfi", "-i", f"color=c=black:s={size}:r={fps}"]
 
     # 静止画 (Jazz / Cafe)
     thumbnail_name = cfg.get("thumbnail", f"live_thumbnail_{channel}.jpg")
@@ -339,7 +345,7 @@ def stream_forever(channel: str, cfg: dict, audio_files: list[Path]) -> None:
             cmd += ["-vf", ",".join(vf_parts)]
         cmd += [
             # 映像エンコード
-            "-c:v", "libx264", "-preset", "veryfast",
+            "-c:v", "libx264", "-preset", cfg.get("preset", "veryfast"),
             "-b:v", bitrate, "-maxrate", bitrate, "-bufsize", buf_size,
             "-g", "60", "-keyint_min", "60",
             # 音声エンコード
