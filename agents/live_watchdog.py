@@ -143,6 +143,10 @@ def _create_and_bind_broadcast(channel: str) -> str | None:
             print(f"[watchdog:{channel}] activeなストリームが無いため復旧見送り(ffmpeg側の問題の可能性)")
             return None
 
+        # 実障害(2026-08-15)で確認済みの正攻法:
+        #   autoStartは既に受信中のストリームには発火せず、
+        #   autoStart付きブロードキャストは手動遷移も拒否される(invalidTransition)。
+        #   → autoStartなし + モニター無効で作成し、bind後に明示的にlive遷移する。
         meta = BROADCAST_META.get(channel, {})
         body = {
             "snippet": {
@@ -155,10 +159,10 @@ def _create_and_bind_broadcast(channel: str) -> str | None:
                 "selfDeclaredMadeForKids": False,
             },
             "contentDetails": {
-                "enableAutoStart": True,
+                "enableAutoStart": False,
                 "enableAutoStop": False,
                 "enableDvr": True,
-                "latencyPreference": "normal",
+                "monitorStream": {"enableMonitorStream": False},
             },
         }
         bc = yt.liveBroadcasts().insert(
@@ -166,14 +170,10 @@ def _create_and_bind_broadcast(channel: str) -> str | None:
         ).execute()
         bc_id = bc["id"]
         yt.liveBroadcasts().bind(id=bc_id, part="id,status", streamId=stream_id).execute()
-
-        # autoStartは「ストリームが新規にactiveになった瞬間」にしか発火しないため、
-        # 既に受信中の場合はffmpegを再接続させて発火させる(実障害で確認済みの挙動)
-        uid = os.getuid()
-        subprocess.run(
-            ["launchctl", "kickstart", "-k", f"gui/{uid}/com.bgm-youtube.{channel}-live"],
-            capture_output=True,
-        )
+        time.sleep(5)
+        yt.liveBroadcasts().transition(
+            broadcastStatus="live", id=bc_id, part="status"
+        ).execute()
         return bc_id
     except Exception as e:
         print(f"[watchdog:{channel}] ブロードキャスト作成失敗: {str(e)[:150]}")
