@@ -166,6 +166,14 @@ def _create_and_bind_broadcast(channel: str) -> str | None:
         ).execute()
         bc_id = bc["id"]
         yt.liveBroadcasts().bind(id=bc_id, part="id,status", streamId=stream_id).execute()
+
+        # autoStartは「ストリームが新規にactiveになった瞬間」にしか発火しないため、
+        # 既に受信中の場合はffmpegを再接続させて発火させる(実障害で確認済みの挙動)
+        uid = os.getuid()
+        subprocess.run(
+            ["launchctl", "kickstart", "-k", f"gui/{uid}/com.bgm-youtube.{channel}-live"],
+            capture_output=True,
+        )
         return bc_id
     except Exception as e:
         print(f"[watchdog:{channel}] ブロードキャスト作成失敗: {str(e)[:150]}")
