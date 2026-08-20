@@ -10,7 +10,10 @@
   10分ごとに各チャンネルをチェック:
     - ffmpegが5分以上稼働している
     - かつ YouTube API 上に live 状態のブロードキャストが無い
-  → その チャンネルの launchd ジョブを kickstart (ffmpeg再接続で新ライブ生成)
+  → 新しいブロードキャストをAPIで作成し、受信中ストリームにbindして復活
+    (enableAutoStop=False で作成するため、以後は瞬断でライブが終了しなくなる)
+    (2026-08-15の実障害で kickstart では復旧しないことを確認済み —
+     ストリーム受信はactiveでも受け皿が自動生成されないため)
 
 使い方:
   python live_watchdog_main.py
@@ -29,6 +32,29 @@ from googleapiclient.discovery import build
 CHECK_INTERVAL = 600      # チェック間隔(秒)
 MIN_FFMPEG_AGE = 300      # ffmpegがこれ以上稼働していて初めて判定対象(起動直後を除外)
 CHANNELS = ["jazz", "cafe", "sleep"]
+
+# ゾンビ復旧時に作成するブロードキャストのタイトル・説明
+BROADCAST_META = {
+    "jazz": {
+        "title": "Jazz Radio 24/7 🐺 Relaxing Noir Jazz for Sleep, Study & Late Night Work",
+        "description": "24/7 live jazz radio — relaxing jazz music for sleeping, studying, "
+                       "working and stress relief. Smoky midnight bar ambience with smooth noir jazz.\n\n"
+                       "🎵 AI-generated original music — no copyright issues",
+    },
+    "cafe": {
+        "title": "Coffee Shop Music 24/7 ☕ Relaxing Jazz & Bossa Nova for Morning, Work & Study",
+        "description": "24/7 coffee shop music — relaxing cafe jazz and bossa nova for morning "
+                       "coffee, work, study and good mood.\n\n"
+                       "🎵 AI-generated original music — no copyright issues",
+    },
+    "sleep": {
+        "title": "Black Screen Sleep Music 24/7 🌙 Deep Sleep, Relaxation & Insomnia Relief",
+        "description": "24/7 black screen sleep music — relaxing sleep sounds for deep sleep, "
+                       "insomnia relief and stress relief.\n\n"
+                       "🌙 No visuals. No distractions. Just sleep.\n\n"
+                       "🎵 AI-generated original music — no copyright issues",
+    },
+}
 
 
 def _get_youtube(channel: str):
@@ -93,13 +119,57 @@ def _is_live_on_youtube(channel: str) -> bool | None:
         return None
 
 
-def _kickstart(channel: str) -> None:
-    uid = os.getuid()
-    label = f"com.bgm-youtube.{channel}-live"
-    subprocess.run(
-        ["launchctl", "kickstart", "-k", f"gui/{uid}/{label}"],
-        capture_output=True,
-    )
+def _create_and_bind_broadcast(channel: str) -> str | None:
+    """
+    受信中ストリームに新しいブロードキャストを作成・bindして復活させる。
+    enableAutoStop=False のため、以後は瞬断でライブが勝手に終了しない。
+    成功したら新しい video ID を返す。
+    """
+    try:
+        yt = _get_youtube(channel)
+        if yt is None:
+            return None
+
+        # 受信中(active)ストリームのIDを取得
+        streams = yt.liveStreams().list(
+            part="id,status", mine=True, maxResults=5
+        ).execute()
+        stream_id = None
+        for it in streams.get("items", []):
+            if it.get("status", {}).get("streamStatus") == "active":
+                stream_id = it["id"]
+                break
+        if not stream_id:
+            print(f"[watchdog:{channel}] activeなストリームが無いため復旧見送り(ffmpeg側の問題の可能性)")
+            return None
+
+        meta = BROADCAST_META.get(channel, {})
+        body = {
+            "snippet": {
+                "title": meta.get("title", f"{channel} 24/7 live"),
+                "description": meta.get("description", ""),
+                "scheduledStartTime": datetime.now(timezone.utc).isoformat(),
+            },
+            "status": {
+                "privacyStatus": "public",
+                "selfDeclaredMadeForKids": False,
+            },
+            "contentDetails": {
+                "enableAutoStart": True,
+                "enableAutoStop": False,
+                "enableDvr": True,
+                "latencyPreference": "normal",
+            },
+        }
+        bc = yt.liveBroadcasts().insert(
+            part="snippet,status,contentDetails", body=body
+        ).execute()
+        bc_id = bc["id"]
+        yt.liveBroadcasts().bind(id=bc_id, part="id,status", streamId=stream_id).execute()
+        return bc_id
+    except Exception as e:
+        print(f"[watchdog:{channel}] ブロードキャスト作成失敗: {str(e)[:150]}")
+        return None
 
 
 def run() -> None:
@@ -113,8 +183,21 @@ def run() -> None:
             live = _is_live_on_youtube(ch)
             if live is False:
                 ts = datetime.now(timezone.utc).strftime("%m/%d %H:%M UTC")
-                print(f"[watchdog:{ch}] ゾンビ配信検知 (ffmpeg稼働{age//60}分/YouTube側live無し) → 再起動 {ts}")
-                _kickstart(ch)
+                print(f"[watchdog:{ch}] ゾンビ配信検知 (ffmpeg稼働{age//60}分/YouTube側live無し) {ts}")
+                bc_id = _create_and_bind_broadcast(ch)
+                if bc_id:
+                    print(f"[watchdog:{ch}] ✅ 復旧: https://www.youtube.com/watch?v={bc_id}")
+                    try:
+                        from agents.alert_agent import send_alert
+                        send_alert(
+                            f"{ch}ライブをゾンビ状態から自動復旧しました",
+                            f"YouTube側でライブが終了扱いになっていたため、\n"
+                            f"新しいブロードキャストを自動作成して復旧しました。\n\n"
+                            f"新URL: https://www.youtube.com/watch?v={bc_id}\n"
+                            f"(概要欄の再生リスト等のリンクは新URLに引き継がれません)",
+                        )
+                    except Exception:
+                        pass
             elif live is True:
                 pass  # 正常
             # None(判定不能)は何もしない — 誤検知でライブを切らない
