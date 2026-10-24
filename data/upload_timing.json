@@ -8,5 +8,15 @@
       "views_7d": null,
       "measured_at": null
     }
+  ],
+  "jazz": [
+    {
+      "video_id": "PsYYBsHSFyA",
+      "published_at": "2026-10-25T09:00:00+00:00",
+      "day_of_week": 6,
+      "hour_utc": 9,
+      "views_7d": null,
+      "measured_at": null
+    }
   ]
 }
