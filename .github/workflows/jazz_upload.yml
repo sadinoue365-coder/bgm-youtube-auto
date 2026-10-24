@@ -5,6 +5,9 @@ on:
     - cron: '0 9 * * *'  # 毎日 18:00 JST (= 09:00 UTC)
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   upload:
     runs-on: ubuntu-latest
@@ -36,3 +39,17 @@ jobs:
           REPORT_GMAIL_APP_PASSWORD: ${{ secrets.REPORT_GMAIL_APP_PASSWORD }}
           REPORT_TO_EMAIL: ${{ secrets.REPORT_TO_EMAIL }}
         run: python jazz_main.py
+
+      - name: Commit PDCA data
+        if: always()
+        run: |
+          git config user.name "BGM Bot"
+          git config user.email "bot@bgm-youtube-auto"
+          git add data/*.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "データ変更なし"
+          else
+            git commit -m "chore: PDCAデータ更新 (${{ github.workflow }})"
+            git pull --rebase origin main || true
+            git push || echo "push失敗(次回実行時に再試行)"
+          fi

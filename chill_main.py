@@ -8,7 +8,7 @@ import chill_config as config
 from agents.duration_agent import get_random_duration, format_duration
 from agents.timing_agent import record_upload, update_timing_metrics
 from agents.image_agent import fetch_pexels_image
-from agents.static_video_agent import create_static_video
+from agents.motion_video_agent import create_motion_video
 from agents.loop_agent import loop_audio
 from agents.thumbnail_agent import create_thumbnail
 from agents.cleanup_agent import cleanup
@@ -207,7 +207,7 @@ def main():
     )
 
     print("\n[5/5] Creating video...")
-    video_path = create_static_video(image_path, audio_path,
+    video_path = create_motion_video(image_path, audio_path, style="warm",
                                      output_path=f"{config.WORK_DIR}/output.mp4")
 
     title, description, tags = generate_metadata(scene_keyword, target_hours)

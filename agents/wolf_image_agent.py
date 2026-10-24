@@ -303,16 +303,17 @@ def generate_wolf_image(creds, folder_id, output_path="work/wolf_bg.jpg"):
     scene = random.choice(SCENES)
     print(f"  Scene: {scene}")
 
-    # 1st: Hugging Face FLUX.1-schnell
-    if _generate_hf_image(scene, output_path):
-        return output_path, scene, "hf"
-
-    # 2nd: Drive
-    print("  HF生成失敗。Driveフォールバックを試みます...")
+    # 1st: Drive（ChatGPT着席生成の高品質ストック — 2026-10-24の方針変更で最優先に。
+    #      HFは無料枠が月30枚に足りず2ヶ月間402で全滅していたため降格）
     if _download_from_drive(creds, folder_id, output_path):
         return output_path, "jazz noir wolf", "drive"
 
+    # 2nd: Hugging Face FLUX.1-schnell（Driveが空の時の保険。402なら即スキップ）
+    print("  Drive取得失敗。HF生成を試みます...")
+    if _generate_hf_image(scene, output_path):
+        return output_path, scene, "hf"
+
     # 3rd: PIL（絶対フォールバック）
-    print("  Drive取得も失敗。PIL生成にフォールバックします...")
+    print("  HF生成も失敗。PIL生成にフォールバックします...")
     _generate_pil_background(output_path)
     return output_path, "jazz noir wolf", "pil"

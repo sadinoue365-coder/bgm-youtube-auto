@@ -5,6 +5,9 @@ on:
     - cron: '0 12 * * 3,5,0'  # 水・金・日 21:00 JST (= 12:00 UTC)
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   upload:
     runs-on: ubuntu-latest
@@ -32,3 +35,17 @@ jobs:
           SLEEP_GDRIVE_FOLDER_ID: ${{ secrets.SLEEP_GDRIVE_FOLDER_ID }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: python sleep_main.py
+
+      - name: Commit PDCA data
+        if: always()
+        run: |
+          git config user.name "BGM Bot"
+          git config user.email "bot@bgm-youtube-auto"
+          git add data/*.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "データ変更なし"
+          else
+            git commit -m "chore: PDCAデータ更新 (${{ github.workflow }})"
+            git pull --rebase origin main || true
+            git push || echo "push失敗(次回実行時に再試行)"
+          fi

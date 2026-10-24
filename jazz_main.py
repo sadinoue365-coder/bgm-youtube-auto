@@ -8,7 +8,7 @@ import time
 import jazz_config as config
 from agents.duration_agent import get_random_duration, format_duration
 from agents.wolf_image_agent import generate_wolf_image
-from agents.jazz_video_agent import create_jazz_video
+from agents.motion_video_agent import create_motion_video
 from agents.loop_agent import loop_audio
 from agents.thumbnail_agent import create_thumbnail
 from agents.cleanup_agent import cleanup
@@ -276,7 +276,7 @@ def main():
         )
 
     print("\n[5/6] Creating video...")
-    video_path = create_jazz_video(image_path, audio_path,
+    video_path = create_motion_video(image_path, audio_path, style="jazz",
                                    output_path=f"{config.WORK_DIR}/output.mp4")
 
     title, description, tags = generate_metadata(scene, target_hours)
