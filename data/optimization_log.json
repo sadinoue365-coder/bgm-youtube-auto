@@ -1,1 +1,31 @@
-[]
+[
+  {
+    "video_id": "9J2iTZbwJBY",
+    "channel": "jazz",
+    "optimized_at": "2026-10-25T07:31:17.053371+00:00",
+    "views_before": 13,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "fHyQETYLcH8",
+    "channel": "cafe",
+    "optimized_at": "2026-10-25T07:31:21.956477+00:00",
+    "views_before": 1,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description",
+      "title"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  }
+]
