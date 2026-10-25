@@ -17,6 +17,14 @@
       "hour_utc": 9,
       "views_7d": null,
       "measured_at": null
+    },
+    {
+      "video_id": "F0pGrLayOps",
+      "published_at": "2026-10-26T09:00:00+00:00",
+      "day_of_week": 0,
+      "hour_utc": 9,
+      "views_7d": null,
+      "measured_at": null
     }
   ]
 }
