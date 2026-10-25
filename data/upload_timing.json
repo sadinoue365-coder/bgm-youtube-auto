@@ -26,5 +26,15 @@
       "views_7d": null,
       "measured_at": null
     }
+  ],
+  "sleep": [
+    {
+      "video_id": "-ecX_sxLV-k",
+      "published_at": "2026-10-26T12:00:00+00:00",
+      "day_of_week": 0,
+      "hour_utc": 12,
+      "views_7d": null,
+      "measured_at": null
+    }
   ]
 }
