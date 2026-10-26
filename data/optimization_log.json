@@ -27,5 +27,34 @@
     "views_7d_after": null,
     "ctr_7d_after": null,
     "measured_at": null
+  },
+  {
+    "video_id": "B1cSCRaQVt8",
+    "channel": "sleep",
+    "optimized_at": "2026-10-26T07:42:11.561104+00:00",
+    "views_before": 5,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description",
+      "title"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "30YBuzX2rGU",
+    "channel": "cafe",
+    "optimized_at": "2026-10-26T07:42:14.181106+00:00",
+    "views_before": 3,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
   }
 ]
