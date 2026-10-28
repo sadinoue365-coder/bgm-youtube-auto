@@ -56,5 +56,20 @@
     "views_7d_after": null,
     "ctr_7d_after": null,
     "measured_at": null
+  },
+  {
+    "video_id": "ongU7UwaEDg",
+    "channel": "jazz",
+    "optimized_at": "2026-10-28T08:15:24.513669+00:00",
+    "views_before": 8,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description",
+      "title"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
   }
 ]
