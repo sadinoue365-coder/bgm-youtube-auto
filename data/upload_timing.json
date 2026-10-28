@@ -67,6 +67,14 @@
       "hour_utc": 12,
       "views_7d": null,
       "measured_at": null
+    },
+    {
+      "video_id": "a2_9ODtaerk",
+      "published_at": "2026-10-29T12:00:00+00:00",
+      "day_of_week": 3,
+      "hour_utc": 12,
+      "views_7d": null,
+      "measured_at": null
     }
   ],
   "cafe": [
