@@ -73,6 +73,14 @@
       "hour_utc": 9,
       "views_7d": null,
       "measured_at": null
+    },
+    {
+      "video_id": "sjMJpLVT6zM",
+      "published_at": "2026-10-31T09:00:00+00:00",
+      "day_of_week": 5,
+      "hour_utc": 9,
+      "views_7d": null,
+      "measured_at": null
     }
   ],
   "sleep": [
