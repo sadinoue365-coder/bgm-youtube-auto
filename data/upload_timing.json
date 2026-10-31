@@ -125,6 +125,14 @@
       "hour_utc": 21,
       "views_7d": null,
       "measured_at": null
+    },
+    {
+      "video_id": "L9cStxW4MRs",
+      "published_at": "2026-10-31T21:00:00+00:00",
+      "day_of_week": 5,
+      "hour_utc": 21,
+      "views_7d": null,
+      "measured_at": null
     }
   ]
 }
