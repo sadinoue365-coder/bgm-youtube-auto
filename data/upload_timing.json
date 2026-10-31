@@ -89,6 +89,14 @@
       "hour_utc": 9,
       "views_7d": null,
       "measured_at": null
+    },
+    {
+      "video_id": "DTotVslynLo",
+      "published_at": "2026-11-01T09:00:00+00:00",
+      "day_of_week": 6,
+      "hour_utc": 9,
+      "views_7d": null,
+      "measured_at": null
     }
   ],
   "sleep": [
