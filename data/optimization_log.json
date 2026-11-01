@@ -9,9 +9,9 @@
       "tags",
       "description"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 14,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-01T09:01:53.519886+00:00"
   },
   {
     "video_id": "fHyQETYLcH8",
@@ -24,9 +24,9 @@
       "description",
       "title"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 2,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-01T09:01:53.519886+00:00"
   },
   {
     "video_id": "B1cSCRaQVt8",
@@ -67,6 +67,20 @@
       "tags",
       "description",
       "title"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "PsYYBsHSFyA",
+    "channel": "jazz",
+    "optimized_at": "2026-11-01T09:01:54.801505+00:00",
+    "views_before": 9,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
     ],
     "views_7d_after": null,
     "ctr_7d_after": null,
