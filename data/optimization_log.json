@@ -39,9 +39,9 @@
       "description",
       "title"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 5,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-02T09:17:49.393287+00:00"
   },
   {
     "video_id": "30YBuzX2rGU",
@@ -53,9 +53,9 @@
       "tags",
       "description"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 3,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-02T09:17:49.393287+00:00"
   },
   {
     "video_id": "ongU7UwaEDg",
@@ -77,6 +77,20 @@
     "channel": "jazz",
     "optimized_at": "2026-11-01T09:01:54.801505+00:00",
     "views_before": 9,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "F0pGrLayOps",
+    "channel": "jazz",
+    "optimized_at": "2026-11-02T09:17:50.579150+00:00",
+    "views_before": 12,
     "ctr_before": null,
     "actions": [
       "tags",
