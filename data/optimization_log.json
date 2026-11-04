@@ -68,9 +68,9 @@
       "description",
       "title"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 8,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-04T08:56:44.622756+00:00"
   },
   {
     "video_id": "PsYYBsHSFyA",
@@ -110,6 +110,34 @@
       "tags",
       "description",
       "title"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "-ecX_sxLV-k",
+    "channel": "sleep",
+    "optimized_at": "2026-11-04T08:56:47.907035+00:00",
+    "views_before": 14,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "r0CEtRCgcLA",
+    "channel": "cafe",
+    "optimized_at": "2026-11-04T08:56:51.189222+00:00",
+    "views_before": 2,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
     ],
     "views_7d_after": null,
     "ctr_7d_after": null,
