@@ -156,5 +156,20 @@
     "views_7d_after": null,
     "ctr_7d_after": null,
     "measured_at": null
+  },
+  {
+    "video_id": "YwpWjJx9hCk",
+    "channel": "cafe",
+    "optimized_at": "2026-11-06T09:13:58.360746+00:00",
+    "views_before": 1,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description",
+      "title"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
   }
 ]
