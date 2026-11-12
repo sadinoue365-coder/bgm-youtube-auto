@@ -153,9 +153,9 @@
       "tags",
       "description"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 7,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-12T09:40:50.131736+00:00"
   },
   {
     "video_id": "YwpWjJx9hCk",
@@ -240,6 +240,20 @@
       "tags",
       "description",
       "title"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "ZzwwfWMQ5OY",
+    "channel": "cafe",
+    "optimized_at": "2026-11-12T09:40:55.252438+00:00",
+    "views_before": 4,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
     ],
     "views_7d_after": null,
     "ctr_7d_after": null,
