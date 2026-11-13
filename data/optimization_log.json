@@ -168,9 +168,9 @@
       "description",
       "title"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 3,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-13T09:24:23.614682+00:00"
   },
   {
     "video_id": "sjMJpLVT6zM",
@@ -250,6 +250,20 @@
     "channel": "cafe",
     "optimized_at": "2026-11-12T09:40:55.252438+00:00",
     "views_before": 4,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "6WwrAyre7RI",
+    "channel": "jazz",
+    "optimized_at": "2026-11-13T09:24:24.939617+00:00",
+    "views_before": 7,
     "ctr_before": null,
     "actions": [
       "tags",
