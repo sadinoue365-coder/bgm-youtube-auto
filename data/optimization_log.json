@@ -183,9 +183,9 @@
       "description",
       "title"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 5,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-15T09:08:39.000275+00:00"
   },
   {
     "video_id": "dcmWB75bUJ4",
@@ -197,9 +197,9 @@
       "tags",
       "description"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 11,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-15T09:08:39.000275+00:00"
   },
   {
     "video_id": "2u4FfG6lUAs",
@@ -268,6 +268,21 @@
     "actions": [
       "tags",
       "description"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "RlOEtKkJzqA",
+    "channel": "sleep",
+    "optimized_at": "2026-11-15T09:08:43.523909+00:00",
+    "views_before": 8,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description",
+      "title"
     ],
     "views_7d_after": null,
     "ctr_7d_after": null,
