@@ -255,9 +255,9 @@
       "tags",
       "description"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 7,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-19T10:08:35.356991+00:00"
   },
   {
     "video_id": "6WwrAyre7RI",
@@ -292,6 +292,20 @@
     "video_id": "LgbQ5vFhxGg",
     "channel": "sleep",
     "optimized_at": "2026-11-18T09:59:40.996675+00:00",
+    "views_before": 13,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "BnE6K4WnxFM",
+    "channel": "cafe",
+    "optimized_at": "2026-11-19T10:08:40.098896+00:00",
     "views_before": 13,
     "ctr_before": null,
     "actions": [
