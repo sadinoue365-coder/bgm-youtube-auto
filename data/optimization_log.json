@@ -284,9 +284,9 @@
       "description",
       "title"
     ],
-    "views_7d_after": null,
+    "views_7d_after": 8,
     "ctr_7d_after": null,
-    "measured_at": null
+    "measured_at": "2026-11-22T09:38:14.246739+00:00"
   },
   {
     "video_id": "LgbQ5vFhxGg",
@@ -307,6 +307,35 @@
     "channel": "cafe",
     "optimized_at": "2026-11-19T10:08:40.098896+00:00",
     "views_before": 13,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "wtVNA4AtPuI",
+    "channel": "jazz",
+    "optimized_at": "2026-11-22T09:38:16.147659+00:00",
+    "views_before": 6,
+    "ctr_before": null,
+    "actions": [
+      "tags",
+      "description",
+      "title"
+    ],
+    "views_7d_after": null,
+    "ctr_7d_after": null,
+    "measured_at": null
+  },
+  {
+    "video_id": "_wx8lhqy300",
+    "channel": "jazz",
+    "optimized_at": "2026-11-22T09:38:17.101303+00:00",
+    "views_before": 9,
     "ctr_before": null,
     "actions": [
       "tags",
