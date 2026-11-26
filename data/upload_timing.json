@@ -85,8 +85,8 @@
       "published_at": "2026-11-18T09:00:00+00:00",
       "day_of_week": 2,
       "hour_utc": 9,
-      "views_7d": null,
-      "measured_at": null
+      "views_7d": 41,
+      "measured_at": "2026-11-26T18:44:39.099490+00:00"
     },
     {
       "video_id": "tpgtlNB11uE",
@@ -108,6 +108,14 @@
       "video_id": "49ENhm0iX6k",
       "published_at": "2026-11-25T09:00:00+00:00",
       "day_of_week": 2,
+      "hour_utc": 9,
+      "views_7d": null,
+      "measured_at": null
+    },
+    {
+      "video_id": "BHoK48bNo-s",
+      "published_at": "2026-11-27T09:00:00+00:00",
+      "day_of_week": 4,
       "hour_utc": 9,
       "views_7d": null,
       "measured_at": null
